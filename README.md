@@ -7,7 +7,7 @@ This is a fork of [Hi-ReS-Stats](https://github.com/mrdoob/Hi-ReS-Stats) project
 
 ### Screenshot ###
 
-![draggable_stats.jpg](https://github.com/rafaelrinaldi/Hi-ReS-Stats/assets/draggable_stats.jpg)
+![draggable_stats.jpg](https://github.com/rafaelrinaldi/Hi-ReS-Stats/blob/master/assets/draggable_stats.jpg)
 
 ### Usage ###
 
