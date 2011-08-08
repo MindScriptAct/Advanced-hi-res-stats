@@ -1,18 +1,18 @@
 /**
- * stats.as
- * https://github.com/mrdoob/Hi-ReS-Stats
+ * Draggable Stats
+ * https://github.com/rafaelrinaldi/Hi-ReS-Stats (fork of https://github.com/mrdoob/Hi-ReS-Stats)
  * 
  * Released under MIT license:
  * http://www.opensource.org/licenses/mit-license.php
  *
  * How to use:
  * 
- *	addChild( new Stats() );
+ *	addChild(new Stats);
  *
  **/
 
-package net.hires.debug {
-	
+package net.hires.debug
+{
 	import flash.display.BitmapData;
 	import flash.display.Sprite;
 	import flash.events.Event;
@@ -22,7 +22,8 @@ package net.hires.debug {
 	import flash.system.System;
 	import flash.text.StyleSheet;
 	import flash.text.TextField;
-	import flash.utils.getTimer;	
+	import flash.utils.getTimer;
+	
 
 	public class Stats extends Sprite {	
 
@@ -52,8 +53,9 @@ package net.hires.debug {
 
 		/**
 		 * <b>Stats</b> FPS, MS and MEM, all in one.
+		 * @param p_draggable Can be draggable?
 		 */
-		public function Stats() : void {
+		public function Stats( p_draggable : Boolean = true ) : void {
 			
 			mem_max = 0;
 
@@ -79,8 +81,9 @@ package net.hires.debug {
 			addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 			addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
 			
+			draggable = p_draggable;
 		}
-
+		
 		private function init(e : Event) : void {
 			
 			graphics.beginFill(colors.bg);
@@ -96,6 +99,11 @@ package net.hires.debug {
 			addEventListener(MouseEvent.CLICK, onClick);
 			addEventListener(Event.ENTER_FRAME, update);
 			
+		}
+		
+		protected function set draggable( value : Boolean ) : void
+		{
+			if(value) new DraggableStats(this);
 		}
 
 		private function destroy(e : Event) : void {
@@ -169,6 +177,14 @@ package net.hires.debug {
 	}
 	
 }
+import net.hires.debug.Stats;
+
+import flash.display.StageAlign;
+import flash.events.ContextMenuEvent;
+import flash.events.Event;
+import flash.events.MouseEvent;
+import flash.ui.ContextMenu;
+import flash.ui.ContextMenuItem;
 
 class Colors {
 
@@ -178,4 +194,124 @@ class Colors {
 	public var mem : uint = 0x00ffff;
 	public var memmax : uint = 0xff0070;
 	
+}
+
+/**
+ * 
+ * <code>Stats</code> with drag control and easy align management via <code>ContextMenu</code>.
+ * 
+ * @author Rafael Rinaldi (rafaelrinaldi.com)
+ * @since Ago 8, 2010
+ * 
+ */
+class DraggableStats
+{
+	public var target : Stats;
+	
+	/**
+	 * @param p_target <code>Stats</code> instance.
+	 */
+	public function DraggableStats( p_target : Stats )
+	{
+		target = p_target;
+		target.buttonMode = true;
+		target.addEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
+	}
+	
+	/**
+	 * Align setter.
+	 * @see flash.display.StageAlign
+	 */
+	public function set align( value : String ) : void
+	{
+		switch(value) {
+			case StageAlign.TOP_LEFT :
+				target.x = 0;
+				target.y = 0;
+			break;
+			
+			case StageAlign.TOP_RIGHT :
+				target.x = target.stage.stageWidth - target.width;
+				target.y = 0;
+			break;
+			
+			case StageAlign.BOTTOM_LEFT :
+				target.x = 0;
+				target.y = target.stage.stageHeight - target.height;
+			break;
+			
+			case StageAlign.BOTTOM_RIGHT :
+				target.x = target.stage.stageWidth - target.width;
+				target.y = target.stage.stageHeight - target.height;
+			break;
+		}
+	}
+
+	protected function addedToStageHandler( event : Event ) : void
+	{
+		/** Creating <code>Stage</code> listeners. **/
+		target.stage.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+		target.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+		
+		/** Creating target listener. **/
+		target.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
+		
+		/** Creating the <code>ContextMenu</code>. **/
+		var menu : ContextMenu = new ContextMenu;
+		menu.hideBuiltInItems();
+		menu.customItems.push(new ContextMenuItem("Align presets:", true, false));
+		menu.customItems.push(new ContextMenuItem(StageAlign.TOP_LEFT));
+		menu.customItems.push(new ContextMenuItem(StageAlign.TOP_RIGHT));
+		menu.customItems.push(new ContextMenuItem(StageAlign.BOTTOM_LEFT));
+		menu.customItems.push(new ContextMenuItem(StageAlign.BOTTOM_RIGHT));
+		
+		/** Watching for events. **/
+		menu.customItems.forEach(function( p_item : ContextMenuItem, p_index : int, ...rest ) : void {
+			if(p_index > 0) p_item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, menuItemSelectHandler);
+		});
+		
+		target.contextMenu = menu;
+		
+		target.removeEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
+	}
+
+	protected function mouseUpHandler( event : MouseEvent ) : void
+	{
+		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+
+	protected function mouseDownHandler( event : MouseEvent ) : void
+	{
+		target.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+
+	protected function mouseMoveHandler( event : MouseEvent ) : void
+	{
+		target.x = target.stage.mouseX - target.width * .5;
+		target.y = target.stage.mouseY - target.height * .5;
+		
+		if(target.x > target.stage.stageWidth - target.width) {
+			target.x = target.stage.stageWidth - target.width;
+		} else if(target.x < 0) {
+			target.x = 0;
+		}
+		
+		if(target.y > target.stage.stageHeight - target.height) {
+			target.y = target.stage.stageHeight - target.height;
+		} else if(target.y < 0) {
+			target.y = 0;
+		}
+		
+		event.updateAfterEvent();
+	}
+
+	protected function mouseLeaveHandler( event : Event ) : void
+	{
+		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+
+	protected function menuItemSelectHandler( event : ContextMenuEvent ) : void
+	{
+		align = event.currentTarget["caption"];
+	}
 }
