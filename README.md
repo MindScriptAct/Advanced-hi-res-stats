@@ -1,4 +1,4 @@
-Hi-ReS! Draggable Stats
+hi-res-draggable-stats
 ========
 
 #### Performance Monitor ####
@@ -9,7 +9,7 @@ This is a fork of [Hi-ReS-Stats](https://github.com/mrdoob/Hi-ReS-Stats) project
 
 ### Screenshot ###
 
-![draggable_stats.jpg](https://github.com/rafaelrinaldi/Hi-ReS-Stats/raw/master/assets/draggable_stats.jpg "Screenshot")
+![draggable_stats.jpg](https://github.com/rafaelrinaldi/hi-res-draggable-stats/raw/master/assets/draggable_stats.jpg "Screenshot")
 
 ### Usage ###
 
@@ -22,4 +22,4 @@ This is a fork of [Hi-ReS-Stats](https://github.com/mrdoob/Hi-ReS-Stats) project
 
 ### Download ###
 
-[Stats.as](https://raw.github.com/rafaelrinaldi/Hi-ReS-Stats/master/src/net/hires/debug/Stats.as)
+[Stats.as](https://raw.github.com/rafaelrinaldi/hi-res-draggable-stats/master/src/net/hires/debug/Stats.as)
