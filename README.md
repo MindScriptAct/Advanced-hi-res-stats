@@ -1,13 +1,15 @@
 Hi-ReS! Draggable Stats
 ========
 
+#### Performance Monitor ####
+
 `Stats` with drag control and easy align management via `ContextMenu`.
 
 This is a fork of [Hi-ReS-Stats](https://github.com/mrdoob/Hi-ReS-Stats) project created by [Mr. Doob](https://github.com/mrdoob).
 
 ### Screenshot ###
 
-![draggable_stats.jpg](https://github.com/rafaelrinaldi/Hi-ReS-Stats/blob/master/assets/draggable_stats.jpg)
+![draggable_stats.jpg](https://github.com/rafaelrinaldi/Hi-ReS-Stats/raw/master/assets/draggable_stats.jpg "Screenshot")
 
 ### Usage ###
 
