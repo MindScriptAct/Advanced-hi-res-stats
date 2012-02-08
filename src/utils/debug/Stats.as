@@ -197,7 +197,7 @@ public class Stats extends Sprite {
 }
 
 }
-import net.hires.debug.Stats;
+import utils.debug.Stats;
 
 import flash.display.StageAlign;
 import flash.events.ContextMenuEvent;
