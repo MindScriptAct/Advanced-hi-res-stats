@@ -1,4 +1,4 @@
-package net.hires.debug {
+package utils.debug  {
 import flash.display.BitmapData;
 import flash.display.Sprite;
 import flash.events.Event;
