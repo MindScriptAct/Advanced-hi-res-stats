@@ -73,7 +73,7 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =  <xmlData>
+		statData = <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -119,10 +119,17 @@ public class Stats extends Sprite {
 		graphics.drawRect(0, 50, WIDTH, HEIGHT - 50);
 		
 		// add text nad graph.
-		addChild(text);		
+		addChild(text);
 		//
 		addEventListener(MouseEvent.CLICK, handleClick);
 		addEventListener(Event.ENTER_FRAME, handleFrameTick);
+		
+		// add dragging feature listeners if needed.
+		if (isDraggable) {
+			this.stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
+			this.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+			this.addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+		}
 	
 	}
 	
@@ -153,13 +160,11 @@ public class Stats extends Sprite {
 		// check if more then 1 second passed.
 		if (timeDif >= 1000) {
 			
+			//
+			msPrev = timer;
+			
 			// calculate ammount of missed seconds. (this can happen then player hangs more then 2 seccond on a job.)
 			var missedSeconds:uint = (timeDif - 1000) / 1000;
-			
-			// TODO : is this line here needed?
-			fps = fps % 1000;
-			
-			msPrev = timer;
 			
 			// get current memory.
 			mem = Number((System.totalMemory * 0.000000954).toFixed(3));
@@ -175,7 +180,7 @@ public class Stats extends Sprite {
 			memMaxGraph = Math.min(graph.height, Math.sqrt(Math.sqrt(memMax * 5000))) - 2;
 			
 			// move graph by 1 pixels for every second passed.
-			graph.scroll(- 1 - missedSeconds, 0);
+			graph.scroll(-1 - missedSeconds, 0);
 			
 			// clear rectangle area for new graph data.
 			if (missedSeconds) {
@@ -223,14 +228,56 @@ public class Stats extends Sprite {
 		text.htmlText = statData;
 	}
 	
-	// .. Utils
+	//----------------------------------
+	//     Dragging functions
+	//----------------------------------
+	
+	// start dragging
+	private function handleMouseDown(event:MouseEvent):void {
+		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+	
+	// stop dragging
+	private function handleMouseUp(event:MouseEvent):void {
+		this.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+	
+	// handle dragging
+	private function mouseMoveHandler(event:MouseEvent):void {
+		// calculete new possitions.
+		this.x = this.stage.mouseX - this.width * .5;
+		this.y = this.stage.mouseY - this.height * .5;
+		
+		// handle x bounds
+		if (this.x > this.stage.stageWidth - this.width) {
+			this.x = this.stage.stageWidth - this.width;
+		} else if (this.x < 0) {
+			this.x = 0;
+		}
+		
+		// handle y bounds.
+		if (this.y > this.stage.stageHeight - this.height) {
+			this.y = this.stage.stageHeight - this.height;
+		} else if (this.y < 0) {
+			this.y = 0;
+		}
+	}
+	
+	// handle mous leaving the screen.
+	private function mouseLeaveHandler(event:Event):void {
+		this.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+	}
+	
+	//----------------------------------
+	//     Utils
+	//----------------------------------
+	
 	// converts color number to hex value.
 	private function hex2css(color:int):String {
 		return "#" + color.toString(16);
 	}
 
 }
-
 }
 
 // helper class to store graph corols.
@@ -240,95 +287,5 @@ class StatColors {
 	public var ms:uint = 0x00ff00;
 	public var mem:uint = 0x00ffff;
 	public var memmax:uint = 0xff0070;
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// for removal..
-
-import utils.debug.Stats;
-
-import flash.display.StageAlign;
-import flash.events.ContextMenuEvent;
-import flash.events.Event;
-import flash.events.MouseEvent;
-import flash.ui.ContextMenu;
-import flash.ui.ContextMenuItem;
-/**
- *
- * <code>Stats</code> with drag control and easy align management via <code>ContextMenu</code>.
- *
- * @author Rafael Rinaldi (rafaelrinaldi.com)
- * @since Ago 8, 2010
- *
- */
-class DraggableStats {
-	public var target:Stats;
-	
-	/**
-	 * @param p_target <code>Stats</code> instance.
-	 */
-	public function DraggableStats(p_target:Stats) {
-		target = p_target;
-		target.buttonMode = true;
-		target.addEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
-	}
-	
-	protected function addedToStageHandler(event:Event):void {
-		/** Creating <code>Stage</code> listeners. **/
-		target.stage.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
-		target.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
-		
-		/** Creating target listener. **/
-		target.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
-		
-		/** Watching for events. **/
-		target.removeEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
-	}
-	
-	protected function mouseUpHandler(event:MouseEvent):void {
-		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
-	}
-	
-	protected function mouseDownHandler(event:MouseEvent):void {
-		target.stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
-	}
-	
-	protected function mouseMoveHandler(event:MouseEvent):void {
-		target.x = target.stage.mouseX - target.width * .5;
-		target.y = target.stage.mouseY - target.height * .5;
-		
-		if (target.x > target.stage.stageWidth - target.width) {
-			target.x = target.stage.stageWidth - target.width;
-		} else if (target.x < 0) {
-			target.x = 0;
-		}
-		
-		if (target.y > target.stage.stageHeight - target.height) {
-			target.y = target.stage.stageHeight - target.height;
-		} else if (target.y < 0) {
-			target.y = 0;
-		}
-		
-		event.updateAfterEvent();
-	}
-	
-	protected function mouseLeaveHandler(event:Event):void {
-		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
-	}
 
 }
