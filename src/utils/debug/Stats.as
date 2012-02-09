@@ -1,13 +1,11 @@
 package utils.debug {
-import avmplus.INCLUDE_CONSTRUCTOR;
+import flash.display.Bitmap;
 import flash.display.BitmapData;
-import flash.display.CapsStyle;
-import flash.display.JointStyle;
-import flash.display.LineScaleMode;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.events.MouseEvent;
 import flash.geom.Matrix;
+import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.system.System;
 import flash.text.StyleSheet;
@@ -76,14 +74,27 @@ public class Stats extends Sprite {
 	// flag for stats beeing dragable or not.
 	private var isDraggable:Boolean = false;
 	
+	// flag to show application execution and render monitoring.
+	// TODO : rename...
+	private var isMonitoring:Boolean = false;
+	
 	private var keepGraph:Boolean = false;
+	
+	// for monitoring..
+	static private const MONITOR_WIDTH:int = 500;
+	private var codeTime:uint;
+	private var lastTimeStamp:uint;
+	private var frameRateTime:int;
+	private var frameTime:uint;
+	private var monitorView_BD:BitmapData;
+	private var monitorView:Bitmap;
 	
 	/**
 	 * <b>Stats</b> FPS, MS and MEM, all in one.
 	 * @param isDraggable enables draging functionality.
 	 */
 	
-	public function Stats(width:int = 70, x:int = 0, y:int = 0, isDraggable:Boolean = true):void {
+	public function Stats(width:int = 70, x:int = 0, y:int = 0, isDraggable:Boolean = true, isMonitoring:Boolean = false):void {
 		
 		// calculate increased width.
 		bonusWidth = width - WIDTH;
@@ -97,12 +108,13 @@ public class Stats extends Sprite {
 		
 		//
 		this.isDraggable = isDraggable;
+		this.isMonitoring = isMonitoring;
 		
 		//
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =       <xmlData>
+		statData =     <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -155,6 +167,11 @@ public class Stats extends Sprite {
 			stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
 			addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
 		}
+		
+		if (isMonitoring) {
+			this.stage.addEventListener(Event.RENDER, handleFrameRender);
+			frameRateTime = Math.round(1000 / this.stage.frameRate);
+		}
 	
 	}
 	
@@ -189,6 +206,15 @@ public class Stats extends Sprite {
 			oldGraph.dispose();
 			keepGraph = false;
 		}
+		
+		if (isMonitoring) {
+			if (!monitorView) {
+				monitorView_BD = new BitmapData(MONITOR_WIDTH, 40, false, 0x000000);
+				monitorView = new Bitmap(monitorView_BD);
+				this.addChild(monitorView);
+			}
+			monitorView.x = WIDTH + bonusWidth + 10;
+		}
 	}
 	
 	private function destroy(event:Event):void {
@@ -216,6 +242,11 @@ public class Stats extends Sprite {
 	
 	// every frame calculate frame stats.
 	private function handleFrameTick(event:Event):void {
+		
+		//------
+		frameTime = getTimer() - lastTimeStamp;
+		lastTimeStamp = getTimer();
+		//------
 		
 		timer = getTimer();
 		
@@ -284,6 +315,25 @@ public class Stats extends Sprite {
 		
 		// update data text.
 		text.htmlText = statData;
+		
+		if (isMonitoring) {
+			this.stage.invalidate();
+			
+			// drawCodeTime
+			monitorView_BD.fillRect(new Rectangle(0, 0, codeTime, 10), 0x00FF00);
+			// draw frameTime
+			monitorView_BD.fillRect(new Rectangle(codeTime, 0, frameTime - codeTime, 10), 0xFFFF00);
+			// clean rest of the line
+			monitorView_BD.fillRect(new Rectangle(frameTime, 0, MONITOR_WIDTH, 10), 0x000000);
+			// frame time delimeter
+			monitorView_BD.fillRect(new Rectangle(frameRateTime, 0, 1, 10), 0xFF0000);
+			//
+			// copy one line down
+			monitorView_BD.copyPixels(monitorView_BD, new Rectangle(0, 9, MONITOR_WIDTH, 40), new Point(0, 10));
+			// separator for main graph and log.
+			monitorView_BD.fillRect(new Rectangle(0, 9, MONITOR_WIDTH, 1), 0xD8D8D8);
+			
+		}
 	}
 	
 	// handle click over stat object.
@@ -311,7 +361,6 @@ public class Stats extends Sprite {
 	
 	// handle mouseWheel
 	private function handleMouseWheel(event:MouseEvent):void {
-		
 		if (event.delta > 0) {
 			bonusWidth += SCROLL_SIZE;
 		} else {
@@ -326,6 +375,11 @@ public class Stats extends Sprite {
 		keepGraph = true;
 		// redraw bg
 		initDrawArea();
+	}
+	
+	// 
+	private function handleFrameRender(event:Event):void {
+		codeTime = getTimer() - lastTimeStamp;
 	}
 	
 	//----------------------------------
