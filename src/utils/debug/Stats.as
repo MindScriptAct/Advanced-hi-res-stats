@@ -1,4 +1,4 @@
-package utils.debug  {
+package utils.debug {
 import flash.display.BitmapData;
 import flash.display.Sprite;
 import flash.events.Event;
@@ -26,29 +26,29 @@ import flash.utils.getTimer;
 
 public class Stats extends Sprite {
 	
-	protected const WIDTH:uint = 70;
-	protected const HEIGHT:uint = 100;
+	private const WIDTH:uint = 70;
+	private const HEIGHT:uint = 100;
 	
-	protected var xml:XML;
+	private var xml:XML;
 	
-	protected var text:TextField;
-	protected var style:StyleSheet;
+	private var text:TextField;
+	private var style:StyleSheet;
 	
-	protected var timer:uint;
-	protected var fps:uint;
-	protected var ms:uint;
-	protected var ms_prev:uint;
-	protected var mem:Number;
-	protected var mem_max:Number;
+	private var timer:uint;
+	private var fps:uint;
+	private var ms:uint;
+	private var ms_prev:uint;
+	private var mem:Number;
+	private var mem_max:Number;
 	
-	protected var graph:BitmapData;
-	protected var rectangle:Rectangle;
+	private var graph:BitmapData;
+	private var rectangle:Rectangle;
 	
-	protected var fps_graph:uint;
-	protected var mem_graph:uint;
-	protected var mem_max_graph:uint;
+	private var fps_graph:uint;
+	private var mem_graph:uint;
+	private var mem_max_graph:uint;
 	
-	protected var colors:Colors = new Colors();
+	private var colors:Colors = new Colors();
 	
 	/**
 	 * <b>Stats</b> FPS, MS and MEM, all in one.
@@ -140,7 +140,10 @@ public class Stats extends Sprite {
 			
 			ms_prev = timer;
 			mem = Number((System.totalMemory * 0.000000954).toFixed(3));
-			mem_max = mem_max > mem ? mem_max : mem;
+			
+			if (mem_max < mem) {
+				mem_max = mem;
+			}
 			
 			fps_graph = Math.min(graph.height, (fps / stage.frameRate) * graph.height);
 			mem_graph = Math.min(graph.height, Math.sqrt(Math.sqrt(mem * 5000))) - 2;
@@ -236,34 +239,6 @@ class DraggableStats {
 		target.addEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
 	}
 	
-	/**
-	 * Align setter.
-	 * @see flash.display.StageAlign
-	 */
-	public function set align(value:String):void {
-		switch (value) {
-			case StageAlign.TOP_LEFT: 
-				target.x = 0;
-				target.y = 0;
-				break;
-			
-			case StageAlign.TOP_RIGHT: 
-				target.x = target.stage.stageWidth - target.width;
-				target.y = 0;
-				break;
-			
-			case StageAlign.BOTTOM_LEFT: 
-				target.x = 0;
-				target.y = target.stage.stageHeight - target.height;
-				break;
-			
-			case StageAlign.BOTTOM_RIGHT: 
-				target.x = target.stage.stageWidth - target.width;
-				target.y = target.stage.stageHeight - target.height;
-				break;
-		}
-	}
-	
 	protected function addedToStageHandler(event:Event):void {
 		/** Creating <code>Stage</code> listeners. **/
 		target.stage.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
@@ -272,23 +247,7 @@ class DraggableStats {
 		/** Creating target listener. **/
 		target.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
 		
-		/** Creating the <code>ContextMenu</code>. **/
-		var menu:ContextMenu = new ContextMenu;
-		menu.hideBuiltInItems();
-		menu.customItems.push(new ContextMenuItem("Align presets:", true, false));
-		menu.customItems.push(new ContextMenuItem(StageAlign.TOP_LEFT));
-		menu.customItems.push(new ContextMenuItem(StageAlign.TOP_RIGHT));
-		menu.customItems.push(new ContextMenuItem(StageAlign.BOTTOM_LEFT));
-		menu.customItems.push(new ContextMenuItem(StageAlign.BOTTOM_RIGHT));
-		
 		/** Watching for events. **/
-		menu.customItems.forEach(function(p_item:ContextMenuItem, p_index:int, ... rest):void {
-				if (p_index > 0)
-					p_item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, menuItemSelectHandler);
-			});
-		
-		target.contextMenu = menu;
-		
 		target.removeEventListener(Event.ADDED_TO_STAGE, addedToStageHandler);
 	}
 	
@@ -323,8 +282,5 @@ class DraggableStats {
 		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 	}
 	
-	protected function menuItemSelectHandler(event:ContextMenuEvent):void {
-		align = event.currentTarget["caption"];
-	}
 
 }
