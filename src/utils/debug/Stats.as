@@ -33,12 +33,16 @@ public class Stats extends Sprite {
 	// stats default size.
 	private const WIDTH:int = 70;
 	private const HEIGHT:int = 100;
-	
 	// fps button consts
 	static private const FPS_BUTTON_XPOS:int = 62;
 	static private const FPS_BUTTON_YPOS:int = 2;
 	static private const FPS_BUTTON_SIZE:Number = 6;
 	static private const FPS_BUTTON_GAP:int = 9;
+	// scroll size
+	static private const SCROLL_SIZE:Number = 10;
+	
+	// bonus width addet to default WIDTH.
+	private var bonusWidth:int = 0;
 	
 	// stats data in XML format.
 	private var statData:XML;
@@ -48,42 +52,57 @@ public class Stats extends Sprite {
 	private var style:StyleSheet;
 	
 	// reacent getTimer value.
-	private var timer:uint;
+	private var timer:uint = 0;
 	
 	// current stat data
-	private var fps:uint;
-	private var ms:uint;
-	private var msPrev:uint;
-	private var mem:Number;
-	private var memMax:Number;
+	private var fps:int = 0;
+	private var ms:int = 0;
+	private var msPrev:int = 0;
+	private var mem:Number = 0;
+	private var memMax:Number = 0;
 	
 	//  graph draw object
 	private var graph:BitmapData;
 	private var clearRect:Rectangle;
 	
 	// current graph draw value.
-	private var fpsGraph:uint;
-	private var memGraph:uint;
-	private var memMaxGraph:uint;
+	private var fpsGraph:int = 0;
+	private var memGraph:int = 0;
+	private var memMaxGraph:int = 0;
 	
 	// object for collor values. (it performs tini bit faster then constants.)
 	private var colors:StatColors = new StatColors();
 	
 	// flag for stats beeing dragable or not.
-	private var isDraggable:Boolean;
+	private var isDraggable:Boolean = false;
+	
+	private var keepGraph:Boolean = false;
 	
 	/**
 	 * <b>Stats</b> FPS, MS and MEM, all in one.
 	 * @param isDraggable enables draging functionality.
 	 */
 	
-	public function Stats(isDraggable:Boolean = true):void {
+	public function Stats(width:int = 70, x:int = 0, y:int = 0, isDraggable:Boolean = true):void {
+		
+		// calculate increased width.
+		bonusWidth = width - WIDTH;
+		if (bonusWidth < 0) {
+			bonusWidth = 0;
+		}
+		
+		// initial positioning
+		this.x = x;
+		this.y = y;
+		
+		//
 		this.isDraggable = isDraggable;
 		
+		//
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData = <xmlData>
+		statData =       <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -109,9 +128,6 @@ public class Stats extends Sprite {
 		text.mouseEnabled = false;
 		
 		//
-		clearRect = new Rectangle(WIDTH - 1, 0, 1, HEIGHT - 50);
-		
-		//
 		addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 		addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
 	
@@ -119,9 +135,33 @@ public class Stats extends Sprite {
 	
 	private function init(event:Event):void {
 		
+		// draw bg and graph
+		initDrawArea();
+		
+		// add text
+		addChild(text);
+		
+		//
+		clearRect = new Rectangle(WIDTH + bonusWidth - 1, 0, 1, HEIGHT - 50);
+		
+		//
+		addEventListener(MouseEvent.CLICK, handleClick);
+		addEventListener(Event.ENTER_FRAME, handleFrameTick);
+		addEventListener(MouseEvent.MOUSE_WHEEL, handleMouseWheel);
+		
+		// add dragging feature listeners if needed.
+		if (isDraggable) {
+			stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
+			stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+			addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+		}
+	
+	}
+	
+	private function initDrawArea():void {
 		// draw bg.
 		graphics.beginFill(colors.bg);
-		graphics.drawRect(0, 0, WIDTH, HEIGHT);
+		graphics.drawRect(0, 0, WIDTH + bonusWidth, HEIGHT);
 		graphics.endFill();
 		
 		// draw fps UP/DOWN buttons
@@ -137,24 +177,18 @@ public class Stats extends Sprite {
 		graphics.lineStyle();
 		
 		// draw graph
-		graph = new BitmapData(WIDTH, HEIGHT - 50, false, colors.bg);
-		graphics.beginBitmapFill(graph, new Matrix(1, 0, 0, 1, 0, 50));
-		graphics.drawRect(0, 50, WIDTH, HEIGHT - 50);
-		
-		// add text nad graph.
-		addChild(text);
-		
-		//
-		addEventListener(MouseEvent.CLICK, handleClick);
-		addEventListener(Event.ENTER_FRAME, handleFrameTick);
-		
-		// add dragging feature listeners if needed.
-		if (isDraggable) {
-			this.stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
-			this.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
-			this.addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+		if (keepGraph) {
+			var oldGraph:BitmapData = graph;
 		}
-	
+		graph = new BitmapData(WIDTH + bonusWidth, HEIGHT - 50, false, colors.bg);
+		graphics.beginBitmapFill(graph, new Matrix(1, 0, 0, 1, 0, 50));
+		graphics.drawRect(0, 50, WIDTH + bonusWidth, HEIGHT - 50);
+		// if oldGraph is set - drow its content into new graph.
+		if (keepGraph) {
+			graph.draw(oldGraph, new Matrix(1, 0, 0, 1, graph.width - oldGraph.width, 0));
+			oldGraph.dispose();
+			keepGraph = false;
+		}
 	}
 	
 	private function destroy(event:Event):void {
@@ -172,8 +206,15 @@ public class Stats extends Sprite {
 		// remove listeners.
 		removeEventListener(MouseEvent.CLICK, handleClick);
 		removeEventListener(Event.ENTER_FRAME, handleFrameTick);
+		
+		if (isDraggable) {
+			stage.removeEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
+			stage.removeEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+			removeEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+		}
 	}
 	
+	// every frame calculate frame stats.
 	private function handleFrameTick(event:Event):void {
 		
 		timer = getTimer();
@@ -208,7 +249,7 @@ public class Stats extends Sprite {
 			
 			// clear rectangle area for new graph data.
 			if (missedSeconds) {
-				graph.fillRect(new Rectangle(WIDTH - 1 - missedSeconds, 0, 1 + missedSeconds, HEIGHT - 50), colors.bg);
+				graph.fillRect(new Rectangle(graph.width - 1 - missedSeconds, 0, 1 + missedSeconds, HEIGHT - 50), colors.bg);
 			} else {
 				graph.fillRect(clearRect, colors.bg);
 			}
@@ -252,23 +293,39 @@ public class Stats extends Sprite {
 			if (this.mouseX < FPS_BUTTON_XPOS + FPS_BUTTON_SIZE) {
 				if (this.mouseY > FPS_BUTTON_YPOS) {
 					if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE) {
-						stage.frameRate++;
+						stage.frameRate = Math.round(stage.frameRate + 1);
 						statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 						text.htmlText = statData;
 					}
 				}
 				if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_GAP) {
 					if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE + FPS_BUTTON_GAP) {
-						stage.frameRate--;
+						stage.frameRate = Math.round(stage.frameRate - 1);
 						statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 						text.htmlText = statData;
 					}
 				}
 			}
 		}
+	}
 	
-		//\mouseY / height > .5 ? stage.frameRate-- : ;
-	
+	// handle mouseWheel
+	private function handleMouseWheel(event:MouseEvent):void {
+		
+		if (event.delta > 0) {
+			bonusWidth += SCROLL_SIZE;
+		} else {
+			bonusWidth -= SCROLL_SIZE;
+			if (bonusWidth < 0) {
+				bonusWidth = 0;
+			}
+		}
+		// clear bg
+		graphics.clear();
+		// flag graph to be preserved.
+		keepGraph = true;
+		// redraw bg
+		initDrawArea();
 	}
 	
 	//----------------------------------
