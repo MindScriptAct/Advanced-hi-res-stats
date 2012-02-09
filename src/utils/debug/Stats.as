@@ -1,5 +1,9 @@
 package utils.debug {
+import avmplus.INCLUDE_CONSTRUCTOR;
 import flash.display.BitmapData;
+import flash.display.CapsStyle;
+import flash.display.JointStyle;
+import flash.display.LineScaleMode;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.events.MouseEvent;
@@ -27,8 +31,14 @@ import flash.utils.getTimer;
 public class Stats extends Sprite {
 	
 	// stats default size.
-	private const WIDTH:uint = 70;
-	private const HEIGHT:uint = 100;
+	private const WIDTH:int = 70;
+	private const HEIGHT:int = 100;
+	
+	// fps button consts
+	static private const FPS_BUTTON_XPOS:int = 62;
+	static private const FPS_BUTTON_YPOS:int = 2;
+	static private const FPS_BUTTON_SIZE:Number = 6;
+	static private const FPS_BUTTON_GAP:int = 9;
 	
 	// stats data in XML format.
 	private var statData:XML;
@@ -114,12 +124,26 @@ public class Stats extends Sprite {
 		graphics.drawRect(0, 0, WIDTH, HEIGHT);
 		graphics.endFill();
 		
+		// draw fps UP/DOWN buttons
+		graphics.lineStyle(1, colors.fps, 1);
+		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+		graphics.moveTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS);
+		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE);
+		graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
+		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
+		graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
+		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
+		graphics.lineStyle();
+		
+		// draw graph
 		graph = new BitmapData(WIDTH, HEIGHT - 50, false, colors.bg);
 		graphics.beginBitmapFill(graph, new Matrix(1, 0, 0, 1, 0, 50));
 		graphics.drawRect(0, 50, WIDTH, HEIGHT - 50);
 		
 		// add text nad graph.
 		addChild(text);
+		
 		//
 		addEventListener(MouseEvent.CLICK, handleClick);
 		addEventListener(Event.ENTER_FRAME, handleFrameTick);
@@ -223,9 +247,28 @@ public class Stats extends Sprite {
 	
 	// handle click over stat object.
 	private function handleClick(event:MouseEvent):void {
-		mouseY / height > .5 ? stage.frameRate-- : stage.frameRate++;
-		statData.fps = "FPS: " + fps + " / " + stage.frameRate;
-		text.htmlText = statData;
+		// check if click is in button area.
+		if (this.mouseX > FPS_BUTTON_XPOS) {
+			if (this.mouseX < FPS_BUTTON_XPOS + FPS_BUTTON_SIZE) {
+				if (this.mouseY > FPS_BUTTON_YPOS) {
+					if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE) {
+						stage.frameRate++;
+						statData.fps = "FPS: " + fps + " / " + stage.frameRate;
+						text.htmlText = statData;
+					}
+				}
+				if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_GAP) {
+					if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE + FPS_BUTTON_GAP) {
+						stage.frameRate--;
+						statData.fps = "FPS: " + fps + " / " + stage.frameRate;
+						text.htmlText = statData;
+					}
+				}
+			}
+		}
+	
+		//\mouseY / height > .5 ? stage.frameRate-- : ;
+	
 	}
 	
 	//----------------------------------
