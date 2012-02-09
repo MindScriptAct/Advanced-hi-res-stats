@@ -26,55 +26,70 @@ import flash.utils.getTimer;
 
 public class Stats extends Sprite {
 	
+	// stats default size.
 	private const WIDTH:uint = 70;
 	private const HEIGHT:uint = 100;
 	
-	private var xml:XML;
+	// stats data in XML format.
+	private var statData:XML;
 	
+	// textField for stats information
 	private var text:TextField;
 	private var style:StyleSheet;
 	
+	// reacent getTimer value.
 	private var timer:uint;
+	
+	// current stat data
 	private var fps:uint;
 	private var ms:uint;
-	private var ms_prev:uint;
+	private var msPrev:uint;
 	private var mem:Number;
-	private var mem_max:Number;
+	private var memMax:Number;
 	
+	//  graph draw object
 	private var graph:BitmapData;
-	private var rectangle:Rectangle;
+	private var clearRect:Rectangle;
 	
-	private var fps_graph:uint;
-	private var mem_graph:uint;
-	private var mem_max_graph:uint;
+	// current graph draw value.
+	private var fpsGraph:uint;
+	private var memGraph:uint;
+	private var memMaxGraph:uint;
 	
-	private var colors:Colors = new Colors();
+	// object for collor values. (it performs tini bit faster then constants.)
+	private var colors:StatColors = new StatColors();
+	
+	// flag for stats beeing dragable or not.
+	private var isDraggable:Boolean;
 	
 	/**
 	 * <b>Stats</b> FPS, MS and MEM, all in one.
-	 * @param p_draggable Can be draggable?
+	 * @param isDraggable enables draging functionality.
 	 */
 	
-	public function Stats(p_draggable:Boolean = true):void {
+	public function Stats(isDraggable:Boolean = true):void {
+		this.isDraggable = isDraggable;
 		
-		draggable = p_draggable;
+		memMax = 0;
 		
-		mem_max = 0;
-		
-		xml =  <xml>
+		// stat data stored in XML formated text.
+		statData =  <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
 				<memMax>MAX:</memMax>
-			</xml>;
+			</xmlData>;
 		
+		// style for stats.
 		style = new StyleSheet();
-		style.setStyle('xml', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
+		style.setStyle('xmlData', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
 		style.setStyle('fps', {color: hex2css(colors.fps)});
 		style.setStyle('ms', {color: hex2css(colors.ms)});
 		style.setStyle('mem', {color: hex2css(colors.mem)});
 		style.setStyle('memMax', {color: hex2css(colors.memmax)});
 		
+		// text fild to show all stats.
+		// TODO : test if it's not more simple just to have 4 text fields without xml and css...
 		text = new TextField();
 		text.width = WIDTH;
 		text.height = 50;
@@ -83,134 +98,143 @@ public class Stats extends Sprite {
 		text.selectable = false;
 		text.mouseEnabled = false;
 		
-		rectangle = new Rectangle(WIDTH - 1, 0, 1, HEIGHT - 50);
+		//
+		clearRect = new Rectangle(WIDTH - 1, 0, 1, HEIGHT - 50);
 		
+		//
 		addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 		addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
 	
 	}
 	
-	private function init(e:Event):void {
+	private function init(event:Event):void {
 		
+		// draw bg.
 		graphics.beginFill(colors.bg);
 		graphics.drawRect(0, 0, WIDTH, HEIGHT);
 		graphics.endFill();
-		
-		addChild(text);
 		
 		graph = new BitmapData(WIDTH, HEIGHT - 50, false, colors.bg);
 		graphics.beginBitmapFill(graph, new Matrix(1, 0, 0, 1, 0, 50));
 		graphics.drawRect(0, 50, WIDTH, HEIGHT - 50);
 		
-		addEventListener(MouseEvent.CLICK, onClick);
-		addEventListener(Event.ENTER_FRAME, update);
+		// add text nad graph.
+		addChild(text);		
+		//
+		addEventListener(MouseEvent.CLICK, handleClick);
+		addEventListener(Event.ENTER_FRAME, handleFrameTick);
 	
 	}
 	
-	protected function set draggable(value:Boolean):void {
-		if (value)
-			new DraggableStats(this);
-	}
-	
-	private function destroy(e:Event):void {
-		
+	private function destroy(event:Event):void {
+		// clear bg
 		graphics.clear();
 		
-		while (numChildren > 0)
+		// remove all childs.
+		while (numChildren > 0) {
 			removeChildAt(0);
+		}
 		
+		// dispose graph bitmap.
 		graph.dispose();
 		
-		removeEventListener(MouseEvent.CLICK, onClick);
-		removeEventListener(Event.ENTER_FRAME, update);
-	
+		// remove listeners.
+		removeEventListener(MouseEvent.CLICK, handleClick);
+		removeEventListener(Event.ENTER_FRAME, handleFrameTick);
 	}
 	
-	private function update(e:Event):void {
+	private function handleFrameTick(event:Event):void {
 		
 		timer = getTimer();
 		
-		var dTime:uint = timer - ms_prev;
+		// calculate time change from last tick in ms.
+		var timeDif:uint = timer - msPrev;
 		
-		if (dTime >= 1000) {
+		// check if more then 1 second passed.
+		if (timeDif >= 1000) {
 			
-			var missedPeriods:uint = (dTime - 1000) / 1000;
+			// calculate ammount of missed seconds. (this can happen then player hangs more then 2 seccond on a job.)
+			var missedSeconds:uint = (timeDif - 1000) / 1000;
 			
+			// TODO : is this line here needed?
 			fps = fps % 1000;
 			
-			ms_prev = timer;
+			msPrev = timer;
+			
+			// get current memory.
 			mem = Number((System.totalMemory * 0.000000954).toFixed(3));
 			
-			if (mem_max < mem) {
-				mem_max = mem;
+			// update max memory.
+			if (memMax < mem) {
+				memMax = mem;
 			}
 			
-			fps_graph = Math.min(graph.height, (fps / stage.frameRate) * graph.height);
-			mem_graph = Math.min(graph.height, Math.sqrt(Math.sqrt(mem * 5000))) - 2;
-			mem_max_graph = Math.min(graph.height, Math.sqrt(Math.sqrt(mem_max * 5000))) - 2;
+			// calculate graph point positios.
+			fpsGraph = Math.min(graph.height, (fps / stage.frameRate) * graph.height);
+			memGraph = Math.min(graph.height, Math.sqrt(Math.sqrt(mem * 5000))) - 2;
+			memMaxGraph = Math.min(graph.height, Math.sqrt(Math.sqrt(memMax * 5000))) - 2;
 			
-			graph.scroll(-(1 + missedPeriods), 0);
+			// move graph by 1 pixels for every second passed.
+			graph.scroll(- 1 - missedSeconds, 0);
 			
-			if (missedPeriods) {
-				graph.fillRect(new Rectangle(WIDTH - 1 - missedPeriods, 0, 1 + missedPeriods, HEIGHT - 50), colors.bg);
+			// clear rectangle area for new graph data.
+			if (missedSeconds) {
+				graph.fillRect(new Rectangle(WIDTH - 1 - missedSeconds, 0, 1 + missedSeconds, HEIGHT - 50), colors.bg);
 			} else {
-				graph.fillRect(rectangle, colors.bg);
+				graph.fillRect(clearRect, colors.bg);
 			}
-			while (missedPeriods) {
-				graph.setPixel(graph.width - 1 - missedPeriods, graph.height - 1, colors.fps);
-				missedPeriods--;
+			
+			// draw missed seconds. (if player failed to respond for more then 1 second that means it was hanging, and FPS was < 1 for that time.)
+			while (missedSeconds) {
+				graph.setPixel(graph.width - 1 - missedSeconds, graph.height - 1, colors.fps);
+				missedSeconds--;
 			}
-			graph.setPixel(graph.width - 1, graph.height - fps_graph, colors.fps);
+			
+			// draw current graph data. 
 			graph.setPixel(graph.width - 1, graph.height - ((timer - ms) >> 1), colors.ms);
-			graph.setPixel(graph.width - 1, graph.height - mem_graph, colors.mem);
-			graph.setPixel(graph.width - 1, graph.height - mem_max_graph, colors.memmax);
+			graph.setPixel(graph.width - 1, graph.height - memGraph, colors.mem);
+			graph.setPixel(graph.width - 1, graph.height - memMaxGraph, colors.memmax);
+			graph.setPixel(graph.width - 1, graph.height - fpsGraph, colors.fps);
 			
-			xml.fps = "FPS: " + fps + " / " + stage.frameRate;
-			xml.mem = "MEM: " + mem;
-			xml.memMax = "MAX: " + mem_max;
+			// update data for new frame stats.
+			statData.fps = "FPS: " + fps + " / " + stage.frameRate;
+			statData.mem = "MEM: " + mem;
+			statData.memMax = "MAX: " + memMax;
 			
+			// frame count for 1 second handled - reset it.
 			fps = 0;
-			
 		}
 		
+		// increse frame tick count by 1.
 		fps++;
 		
-		xml.ms = "MS: " + (timer - ms);
+		// calculate time in ms for one frame tick.
+		statData.ms = "MS: " + (timer - ms);
 		ms = timer;
 		
-		text.htmlText = xml;
+		// update data text.
+		text.htmlText = statData;
 	}
 	
-	private function onClick(e:MouseEvent):void {
-		
+	// handle click over stat object.
+	private function handleClick(event:MouseEvent):void {
 		mouseY / height > .5 ? stage.frameRate-- : stage.frameRate++;
-		xml.fps = "FPS: " + fps + " / " + stage.frameRate;
-		text.htmlText = xml;
-	
+		statData.fps = "FPS: " + fps + " / " + stage.frameRate;
+		text.htmlText = statData;
 	}
 	
 	// .. Utils
-	
+	// converts color number to hex value.
 	private function hex2css(color:int):String {
-		
 		return "#" + color.toString(16);
-	
 	}
 
 }
 
 }
-import utils.debug.Stats;
 
-import flash.display.StageAlign;
-import flash.events.ContextMenuEvent;
-import flash.events.Event;
-import flash.events.MouseEvent;
-import flash.ui.ContextMenu;
-import flash.ui.ContextMenuItem;
-
-class Colors {
-	
+// helper class to store graph corols.
+class StatColors {
 	public var bg:uint = 0x000033;
 	public var fps:uint = 0xffff00;
 	public var ms:uint = 0x00ff00;
@@ -219,6 +243,31 @@ class Colors {
 
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// for removal..
+
+import utils.debug.Stats;
+
+import flash.display.StageAlign;
+import flash.events.ContextMenuEvent;
+import flash.events.Event;
+import flash.events.MouseEvent;
+import flash.ui.ContextMenu;
+import flash.ui.ContextMenuItem;
 /**
  *
  * <code>Stats</code> with drag control and easy align management via <code>ContextMenu</code>.
@@ -281,6 +330,5 @@ class DraggableStats {
 	protected function mouseLeaveHandler(event:Event):void {
 		target.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 	}
-	
 
 }
