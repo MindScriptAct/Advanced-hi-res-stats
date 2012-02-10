@@ -35,17 +35,15 @@ public class Stats extends Sprite {
 	// stats default size.
 	private const DEFAULT_WIDTH:int = 70;
 	private const DEFAULT_HEIGHT:int = 100;
-	
 	private const MINIMIZED_WIDTH:int = 62;
 	private const MINIMIZED_HEIGHT:int = 13;
-	
 	private const MONITOR_WIDTH:int = 500;
 	// fps button consts
-	private const FPS_BUTTON_XPOS:int = 62;
-	private const FPS_BUTTON_YPOS:int = 2;
-	private const FPS_BUTTON_SIZE:Number = 6;
-	private const FPS_BUTTON_GAP:int = 9;
-	private const FPS_BUTTON_2_GAP:int = 21;
+	private const BUTTON_XPOS:int = 62;
+	private const BUTTON_YPOS:int = 2;
+	private const BUTTON_SIZE:Number = 6;
+	private const BUTTON_GAP:int = 9;
+	private const BUTTON_MONITOR_GAP:int = 21;
 	// 
 	private const SCROLL_SIZE:Number = 10;
 	private const MINIMIZE_BUTTON_SIZE:Number = 5;
@@ -109,14 +107,15 @@ public class Stats extends Sprite {
 	// flag to show application execution and render monitoring.
 	private var isMonitoring:Boolean = false;
 	
-	//
-	private var keepGraph:Boolean = false;
-	
 	/**
-	 * <b>Stats</b> FPS, MS and MEM, all in one.
-	 * @param isDraggable enables draging functionality.
+	 * Stats - FPS, MS and MEM, all in one.
+	 * @param	width			Starting width of Stats object. If it is less then 70 - it will be set to default(70).
+	 * @param	x				initial x position
+	 * @param	y				initial y position
+	 * @param	isMinimized		initial minimize status. (not minimized by default)
+	 * @param	isDraggable		makes stats dragable or not. (dragable by default)
+	 * @param	isMonitoring	flag to start monitoring frame execution time. (will not monitor by default.)
 	 */
-	
 	public function Stats(width:int = 70, x:int = 0, y:int = 0, isMinimized:Boolean = false, isDraggable:Boolean = true, isMonitoring:Boolean = false):void {
 		this.isMinimized = isMinimized;
 		
@@ -138,14 +137,14 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =       <xmlData>
+		statData =     <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
 				<memMax>MAX:</memMax>
 			</xmlData>;
 		
-		statDataMinimized =       <xmlData>
+		statDataMinimized =     <xmlData>
 				<fps>FPS:</fps>
 			</xmlData>;			
 		
@@ -179,6 +178,9 @@ public class Stats extends Sprite {
 		// add text
 		addChild(statsText);
 		
+		// set initial time in ms for 1 frame.
+		frameRateTime = Math.round(1000 / this.stage.frameRate);
+		
 		// init objects for later reuse.
 		clearRect = new Rectangle(DEFAULT_WIDTH + bonusWidth - 1, 0, 1, DEFAULT_HEIGHT - 50);
 		codeRect = new Rectangle(0, 0, -1, 10);
@@ -207,17 +209,13 @@ public class Stats extends Sprite {
 	}
 	
 	private function initDrawArea():void {
-		
-		handleBg();
-		
-		handleGraph();
-		
-		handleMonitoring();
-		
-		handleMinimizing();
+		initBackground();
+		initGraph();
+		initMonitoring();
+		initMinimizeButton();
 	}
 	
-	private function handleBg():void {
+	private function initBackground():void {
 		graphics.clear();
 		// draw bg.
 		graphics.beginFill(colors.bg);
@@ -232,43 +230,43 @@ public class Stats extends Sprite {
 			// draw fps UP/DOWN buttons
 			graphics.lineStyle(1, colors.fps, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
 			// plus sign button
-			graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
-			graphics.moveTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS);
-			graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE);
-			graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
-			graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
+			graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS, BUTTON_SIZE, BUTTON_SIZE);
+			graphics.moveTo(BUTTON_XPOS + BUTTON_SIZE / 2, BUTTON_YPOS);
+			graphics.lineTo(BUTTON_XPOS + BUTTON_SIZE / 2, BUTTON_YPOS + BUTTON_SIZE);
+			graphics.moveTo(BUTTON_XPOS, BUTTON_YPOS + BUTTON_SIZE / 2);
+			graphics.lineTo(BUTTON_XPOS + BUTTON_SIZE, BUTTON_YPOS + BUTTON_SIZE / 2);
 			// minus sign button
-			graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
-			graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
-			graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
+			graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_GAP, BUTTON_SIZE, BUTTON_SIZE);
+			graphics.moveTo(BUTTON_XPOS, BUTTON_YPOS + BUTTON_SIZE / 2 + BUTTON_GAP);
+			graphics.lineTo(BUTTON_XPOS + BUTTON_SIZE, BUTTON_YPOS + BUTTON_SIZE / 2 + BUTTON_GAP);
 			// monitoring on/off button.
 			graphics.lineStyle(1, colors.monitorSeparator, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-			graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+			graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_MONITOR_GAP, BUTTON_SIZE, BUTTON_SIZE);
+			graphics.lineStyle(1, colors.executionTime, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+			graphics.moveTo(BUTTON_XPOS + 1, BUTTON_YPOS + BUTTON_MONITOR_GAP + 1);
+			graphics.lineTo(BUTTON_XPOS + 1, BUTTON_YPOS + BUTTON_MONITOR_GAP + BUTTON_SIZE - 1);
+			graphics.moveTo(BUTTON_XPOS + 2, BUTTON_YPOS + BUTTON_MONITOR_GAP + 1);
+			graphics.lineTo(BUTTON_XPOS + 2, BUTTON_YPOS + BUTTON_MONITOR_GAP + BUTTON_SIZE - 1);
 			graphics.lineStyle(1, colors.ms, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-			graphics.moveTo(FPS_BUTTON_XPOS + 1, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
-			graphics.lineTo(FPS_BUTTON_XPOS + 1, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + FPS_BUTTON_SIZE - 1);
-			graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
-			graphics.lineTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + FPS_BUTTON_SIZE - 1);
-			graphics.lineStyle(1, colors.fps, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-			graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
-			graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
-			graphics.moveTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
-			graphics.lineTo(FPS_BUTTON_XPOS + 4, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
-			graphics.moveTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
-			graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 3);
-			graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 4);
-			graphics.lineTo(FPS_BUTTON_XPOS + 4, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 4);
-			graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 5);
-			graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 5);
+			graphics.moveTo(BUTTON_XPOS + 2, BUTTON_YPOS + BUTTON_MONITOR_GAP + 1);
+			graphics.lineTo(BUTTON_XPOS + 3, BUTTON_YPOS + BUTTON_MONITOR_GAP + 1);
+			graphics.moveTo(BUTTON_XPOS + 3, BUTTON_YPOS + BUTTON_MONITOR_GAP + 2);
+			graphics.lineTo(BUTTON_XPOS + 4, BUTTON_YPOS + BUTTON_MONITOR_GAP + 2);
+			graphics.moveTo(BUTTON_XPOS + 3, BUTTON_YPOS + BUTTON_MONITOR_GAP + 2);
+			graphics.lineTo(BUTTON_XPOS + 3, BUTTON_YPOS + BUTTON_MONITOR_GAP + 3);
+			graphics.moveTo(BUTTON_XPOS + 2, BUTTON_YPOS + BUTTON_MONITOR_GAP + 4);
+			graphics.lineTo(BUTTON_XPOS + 4, BUTTON_YPOS + BUTTON_MONITOR_GAP + 4);
+			graphics.moveTo(BUTTON_XPOS + 2, BUTTON_YPOS + BUTTON_MONITOR_GAP + 5);
+			graphics.lineTo(BUTTON_XPOS + 3, BUTTON_YPOS + BUTTON_MONITOR_GAP + 5);
 		}
 		//
 		graphics.lineStyle();
 	}
 	
-	private function handleGraph():void {
+	private function initGraph():void {
 		// draw graph
 		if (!isMinimized) {
-			if (keepGraph) {
+			if (graph_BD) {
 				var oldGraph_BD:BitmapData = graph_BD;
 			}
 			graph_BD = new BitmapData(DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
@@ -276,28 +274,25 @@ public class Stats extends Sprite {
 			graphics.beginBitmapFill(graph_BD, new Matrix(1, 0, 0, 1, 0, 50));
 			graphics.drawRect(0, 50, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50);
 			// if oldGraph is set - drow its content into new graph.
-			if (keepGraph) {
+			if (oldGraph_BD) {
 				graph_BD.copyPixels(oldGraph_BD, oldGraph_BD.rect, new Point(graph_BD.width - oldGraph_BD.width, 0));
 				oldGraph_BD.dispose();
-				keepGraph = false;
 			}
 		}
 	}
 	
-	private function handleMonitoring():void {
-		
+	private function initMonitoring():void {
 		// draw button outline.
 		if (!isMinimized) {
 			if (isMonitoring) {
-				frameRateTime = Math.round(1000 / this.stage.frameRate);
 				graphics.lineStyle(1, 0xFFFFFF, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-				graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
-				graphics.drawRect(FPS_BUTTON_XPOS - 1, FPS_BUTTON_YPOS - 1 + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE + 2, FPS_BUTTON_SIZE + 2);
+				graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_MONITOR_GAP, BUTTON_SIZE, BUTTON_SIZE);
+				graphics.drawRect(BUTTON_XPOS - 1, BUTTON_YPOS - 1 + BUTTON_MONITOR_GAP, BUTTON_SIZE + 2, BUTTON_SIZE + 2);
 			} else {
 				graphics.lineStyle(1, colors.monitorSeparator, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-				graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+				graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_MONITOR_GAP, BUTTON_SIZE, BUTTON_SIZE);
 				graphics.lineStyle(1, 0x0, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
-				graphics.drawRect(FPS_BUTTON_XPOS - 1, FPS_BUTTON_YPOS - 1 + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE + 2, FPS_BUTTON_SIZE + 2);
+				graphics.drawRect(BUTTON_XPOS - 1, BUTTON_YPOS - 1 + BUTTON_MONITOR_GAP, BUTTON_SIZE + 2, BUTTON_SIZE + 2);
 			}
 		}
 		graphics.lineStyle();
@@ -307,24 +302,28 @@ public class Stats extends Sprite {
 			if (!monitorView) {
 				monitorView_BD = new BitmapData(MONITOR_WIDTH, DEFAULT_HEIGHT, false, colors.bg);
 				monitorView = new Bitmap(monitorView_BD);
+			}
+			if (!this.contains(monitorView)) {
 				this.addChild(monitorView);
 			}
-			monitorView.visible = true;
-			monitorView.x = DEFAULT_WIDTH + bonusWidth + 10;
+			monitorView.x = DEFAULT_WIDTH + bonusWidth + 5;
 		} else {
-			//
 			if (monitorView_BD) {
 				monitorView_BD.fillRect(monitorView_BD.rect, colors.bg);
 			}
 			if (monitorView) {
-				monitorView.visible = false;
+				if (this.contains(monitorView)) {
+					this.removeChild(monitorView);
+				}
 			}
 		}
 		
 		// hide monitoring if minimized.
 		if (isMinimized) {
 			if (monitorView) {
-				monitorView.visible = false;
+				if (this.contains(monitorView)) {
+					this.removeChild(monitorView);
+				}
 			}
 		}
 		
@@ -340,7 +339,7 @@ public class Stats extends Sprite {
 		}
 	}
 	
-	private function handleMinimizing():void {
+	private function initMinimizeButton():void {
 		// draw button.
 		if (isMinimized) {
 			graphics.beginFill(0xFF0000)
@@ -359,13 +358,7 @@ public class Stats extends Sprite {
 			graphics.lineTo(-1, 4);
 			graphics.endFill();
 		}
-		
-		//graphics.moveTo(3, 1);
-		//graphics.lineTo(3, 3);
-		//graphics.lineTo(1, 3);			
-		
 		graphics.lineStyle();
-	
 	}
 	
 	//----------------------------------
@@ -467,16 +460,16 @@ public class Stats extends Sprite {
 			
 			// drawCodeTime
 			codeRect.width = codeTime;
-			monitorView_BD.fillRect(codeRect, colors.ms);
+			monitorView_BD.fillRect(codeRect, colors.executionTime);
 			// draw frameTime
-			renderRect.x = codeTime + 1;
+			renderRect.x = codeTime;
 			renderRect.width = frameTime - codeTime;
-			monitorView_BD.fillRect(renderRect, colors.fps);
+			monitorView_BD.fillRect(renderRect, colors.ms);
 			// clean rest of the line
-			clearMonitorRect.x = frameTime + 1;
+			clearMonitorRect.x = frameTime;
 			monitorView_BD.fillRect(clearMonitorRect, colors.bg);
 			// frame time delimeter
-			monitorView_BD.fillRect(frameRateRect, colors.fpsSeparator);
+			monitorView_BD.fillRect(frameRateRect, colors.fps);
 			//
 			// move monitoring history one line down
 			monitorView_BD.copyPixels(monitorView_BD, monitoringHistoryRect, monitoringHistoryNewPoint);
@@ -506,11 +499,11 @@ public class Stats extends Sprite {
 	private function handleClick(event:MouseEvent):void {
 		// check if click is in button area.
 		if (!isMinimized) {
-			if (this.mouseX > FPS_BUTTON_XPOS) {
-				if (this.mouseX < FPS_BUTTON_XPOS + FPS_BUTTON_SIZE) {
+			if (this.mouseX > BUTTON_XPOS) {
+				if (this.mouseX < BUTTON_XPOS + BUTTON_SIZE) {
 					// add fps button
-					if (this.mouseY > FPS_BUTTON_YPOS) {
-						if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE) {
+					if (this.mouseY > BUTTON_YPOS) {
+						if (this.mouseY < BUTTON_YPOS + BUTTON_SIZE) {
 							stage.frameRate = Math.round(stage.frameRate + 1);
 							statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 							statsText.htmlText = statData;
@@ -518,18 +511,19 @@ public class Stats extends Sprite {
 						}
 					}
 					// remove fps button
-					if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_GAP) {
-						if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE + FPS_BUTTON_GAP) {
+					if (this.mouseY > BUTTON_YPOS + BUTTON_GAP) {
+						if (this.mouseY < BUTTON_YPOS + BUTTON_SIZE + BUTTON_GAP) {
 							stage.frameRate = Math.round(stage.frameRate - 1);
 							statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 							statsText.htmlText = statData;
 						}
 					}
 					// toggle monitoring button
-					if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP) {
-						if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE + FPS_BUTTON_2_GAP) {
+					if (this.mouseY > BUTTON_YPOS + BUTTON_MONITOR_GAP) {
+						if (this.mouseY < BUTTON_YPOS + BUTTON_SIZE + BUTTON_MONITOR_GAP) {
 							isMonitoring = !isMonitoring;
-							handleMonitoring();
+							initMonitoring();
+							fitToStage();
 						}
 					}
 					
@@ -564,8 +558,6 @@ public class Stats extends Sprite {
 		}
 		// clear bg
 		graphics.clear();
-		// flag graph to be preserved.
-		keepGraph = true;
 		// redraw bg
 		initDrawArea();
 	}
@@ -659,7 +651,7 @@ class StatColors {
 	public var mem:uint = 0x00FFFF;
 	public var memMax:uint = 0xFF0070;
 	
-	public var fpsSeparator:uint = 0xFF0000;
+	public var executionTime:uint = 0xFF0000;
 	public var monitorSeparator:int = 0xD8D8D8;
 
 }
