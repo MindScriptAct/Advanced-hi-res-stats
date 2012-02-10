@@ -54,7 +54,7 @@ public class Stats extends Sprite {
 	
 	// current stat data
 	private var fps:int = 0;
-	private var ms:int = 0;
+	private var lastTimer:int = 0;
 	private var msPrev:int = 0;
 	private var mem:Number = 0;
 	private var memMax:Number = 0;
@@ -83,7 +83,6 @@ public class Stats extends Sprite {
 	// for monitoring..
 	static private const MONITOR_WIDTH:int = 500;
 	private var codeTime:uint;
-	private var lastTimeStamp:uint;
 	private var frameRateTime:int;
 	private var frameTime:uint;
 	private var monitorView_BD:BitmapData;
@@ -114,7 +113,7 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =     <xmlData>
+		statData =  <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -202,7 +201,7 @@ public class Stats extends Sprite {
 		graphics.drawRect(0, 50, WIDTH + bonusWidth, HEIGHT - 50);
 		// if oldGraph is set - drow its content into new graph.
 		if (keepGraph) {
-			graph.draw(oldGraph, new Matrix(1, 0, 0, 1, graph.width - oldGraph.width, 0));
+			graph.copyPixels(oldGraph, oldGraph.rect, new Point(graph.width - oldGraph.width, 0));
 			oldGraph.dispose();
 			keepGraph = false;
 		}
@@ -243,11 +242,7 @@ public class Stats extends Sprite {
 	// every frame calculate frame stats.
 	private function handleFrameTick(event:Event):void {
 		
-		//------
-		frameTime = getTimer() - lastTimeStamp;
-		lastTimeStamp = getTimer();
-		//------
-		
+		frameTime = getTimer() - timer;
 		timer = getTimer();
 		
 		// calculate time change from last tick in ms.
@@ -292,7 +287,7 @@ public class Stats extends Sprite {
 			}
 			
 			// draw current graph data. 
-			graph.setPixel(graph.width - 1, graph.height - ((timer - ms) >> 1), colors.ms);
+			graph.setPixel(graph.width - 1, graph.height - ((timer - lastTimer) >> 1), colors.ms);
 			graph.setPixel(graph.width - 1, graph.height - memGraph, colors.mem);
 			graph.setPixel(graph.width - 1, graph.height - memMaxGraph, colors.memmax);
 			graph.setPixel(graph.width - 1, graph.height - fpsGraph, colors.fps);
@@ -306,16 +301,7 @@ public class Stats extends Sprite {
 			fps = 0;
 		}
 		
-		// increse frame tick count by 1.
-		fps++;
-		
-		// calculate time in ms for one frame tick.
-		statData.ms = "MS: " + (timer - ms);
-		ms = timer;
-		
-		// update data text.
-		text.htmlText = statData;
-		
+		// handle monitoring
 		if (isMonitoring) {
 			this.stage.invalidate();
 			
@@ -334,6 +320,18 @@ public class Stats extends Sprite {
 			monitorView_BD.fillRect(new Rectangle(0, 9, MONITOR_WIDTH, 1), 0xD8D8D8);
 			
 		}
+		
+		// time in ms for one frame tick.
+		statData.ms = "MS: " + frameTime;
+		
+		// update data text.
+		text.htmlText = statData;
+		
+		// increse frame tick count by 1.
+		fps++;
+		
+		//
+		lastTimer = timer;
 	}
 	
 	// handle click over stat object.
@@ -379,7 +377,7 @@ public class Stats extends Sprite {
 	
 	// 
 	private function handleFrameRender(event:Event):void {
-		codeTime = getTimer() - lastTimeStamp;
+		codeTime = getTimer() - timer;
 	}
 	
 	//----------------------------------
