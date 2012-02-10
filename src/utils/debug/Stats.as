@@ -29,15 +29,16 @@ import flash.utils.getTimer;
 public class Stats extends Sprite {
 	
 	// stats default size.
-	private const WIDTH:int = 70;
-	private const HEIGHT:int = 100;
+	private const DEFAULT_WIDTH:int = 70;
+	private const DEFAULT_HEIGHT:int = 100;
+	private const MONITOR_WIDTH:int = 500;
 	// fps button consts
-	static private const FPS_BUTTON_XPOS:int = 62;
-	static private const FPS_BUTTON_YPOS:int = 2;
-	static private const FPS_BUTTON_SIZE:Number = 6;
-	static private const FPS_BUTTON_GAP:int = 9;
+	private const FPS_BUTTON_XPOS:int = 62;
+	private const FPS_BUTTON_YPOS:int = 2;
+	private const FPS_BUTTON_SIZE:Number = 6;
+	private const FPS_BUTTON_GAP:int = 9;
 	// scroll size
-	static private const SCROLL_SIZE:Number = 10;
+	private const SCROLL_SIZE:Number = 10;
 	
 	// bonus width addet to default WIDTH.
 	private var bonusWidth:int = 0;
@@ -55,13 +56,29 @@ public class Stats extends Sprite {
 	// current stat data
 	private var fps:int = 0;
 	private var lastTimer:int = 0;
-	private var msPrev:int = 0;
+	private var tickTimer:int = 0;
 	private var mem:Number = 0;
 	private var memMax:Number = 0;
+	
+	// data for monitoring
+	private var frameRateTime:int;
+	private var codeTime:uint;
+	private var frameTime:uint;
 	
 	//  graph draw object
 	private var graph:BitmapData;
 	private var clearRect:Rectangle;
+	
+	// monitoring draw object
+	private var monitorView_BD:BitmapData;
+	private var monitorView:Bitmap;
+	private var codeRect:Rectangle;
+	private var renderRect:Rectangle;
+	private var clearMonitorRect:Rectangle;
+	private var frameRateRect:Rectangle;
+	private var monitoringHistoryRect:Rectangle;
+	private var monitoringHistoryNewPoint:Point;
+	private var monitorSeparatorRect:Rectangle;
 	
 	// current graph draw value.
 	private var fpsGraph:int = 0;
@@ -80,14 +97,6 @@ public class Stats extends Sprite {
 	
 	private var keepGraph:Boolean = false;
 	
-	// for monitoring..
-	static private const MONITOR_WIDTH:int = 500;
-	private var codeTime:uint;
-	private var frameRateTime:int;
-	private var frameTime:uint;
-	private var monitorView_BD:BitmapData;
-	private var monitorView:Bitmap;
-	
 	/**
 	 * <b>Stats</b> FPS, MS and MEM, all in one.
 	 * @param isDraggable enables draging functionality.
@@ -96,7 +105,7 @@ public class Stats extends Sprite {
 	public function Stats(width:int = 70, x:int = 0, y:int = 0, isDraggable:Boolean = true, isMonitoring:Boolean = false):void {
 		
 		// calculate increased width.
-		bonusWidth = width - WIDTH;
+		bonusWidth = width - DEFAULT_WIDTH;
 		if (bonusWidth < 0) {
 			bonusWidth = 0;
 		}
@@ -113,7 +122,7 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =  <xmlData>
+		statData =      <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -126,12 +135,12 @@ public class Stats extends Sprite {
 		style.setStyle('fps', {color: hex2css(colors.fps)});
 		style.setStyle('ms', {color: hex2css(colors.ms)});
 		style.setStyle('mem', {color: hex2css(colors.mem)});
-		style.setStyle('memMax', {color: hex2css(colors.memmax)});
+		style.setStyle('memMax', {color: hex2css(colors.memMax)});
 		
 		// text fild to show all stats.
 		// TODO : test if it's not more simple just to have 4 text fields without xml and css...
 		text = new TextField();
-		text.width = WIDTH;
+		text.width = DEFAULT_WIDTH;
 		text.height = 50;
 		text.styleSheet = style;
 		text.condenseWhite = true;
@@ -153,7 +162,7 @@ public class Stats extends Sprite {
 		addChild(text);
 		
 		//
-		clearRect = new Rectangle(WIDTH + bonusWidth - 1, 0, 1, HEIGHT - 50);
+		clearRect = new Rectangle(DEFAULT_WIDTH + bonusWidth - 1, 0, 1, DEFAULT_HEIGHT - 50);
 		
 		//
 		addEventListener(MouseEvent.CLICK, handleClick);
@@ -177,7 +186,7 @@ public class Stats extends Sprite {
 	private function initDrawArea():void {
 		// draw bg.
 		graphics.beginFill(colors.bg);
-		graphics.drawRect(0, 0, WIDTH + bonusWidth, HEIGHT);
+		graphics.drawRect(0, 0, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT);
 		graphics.endFill();
 		
 		// draw fps UP/DOWN buttons
@@ -196,9 +205,9 @@ public class Stats extends Sprite {
 		if (keepGraph) {
 			var oldGraph:BitmapData = graph;
 		}
-		graph = new BitmapData(WIDTH + bonusWidth, HEIGHT - 50, false, colors.bg);
+		graph = new BitmapData(DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
 		graphics.beginBitmapFill(graph, new Matrix(1, 0, 0, 1, 0, 50));
-		graphics.drawRect(0, 50, WIDTH + bonusWidth, HEIGHT - 50);
+		graphics.drawRect(0, 50, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50);
 		// if oldGraph is set - drow its content into new graph.
 		if (keepGraph) {
 			graph.copyPixels(oldGraph, oldGraph.rect, new Point(graph.width - oldGraph.width, 0));
@@ -207,12 +216,21 @@ public class Stats extends Sprite {
 		}
 		
 		if (isMonitoring) {
+			
+			codeRect = new Rectangle(0, 0, -1, 10);
+			renderRect = new Rectangle(-1, 0, -1, 10);
+			clearMonitorRect = new Rectangle(-1, 0, MONITOR_WIDTH, 10);
+			frameRateRect = new Rectangle(frameRateTime, 0, 1, 10);
+			monitoringHistoryRect = new Rectangle(0, 9, MONITOR_WIDTH, DEFAULT_HEIGHT);
+			monitoringHistoryNewPoint = new Point(0, 10);
+			monitorSeparatorRect = new Rectangle(0, 8, MONITOR_WIDTH, 1)
+			
 			if (!monitorView) {
-				monitorView_BD = new BitmapData(MONITOR_WIDTH, 40, false, 0x000000);
+				monitorView_BD = new BitmapData(MONITOR_WIDTH, DEFAULT_HEIGHT, false, colors.bg);
 				monitorView = new Bitmap(monitorView_BD);
 				this.addChild(monitorView);
 			}
-			monitorView.x = WIDTH + bonusWidth + 10;
+			monitorView.x = DEFAULT_WIDTH + bonusWidth + 10;
 		}
 	}
 	
@@ -246,16 +264,16 @@ public class Stats extends Sprite {
 		timer = getTimer();
 		
 		// calculate time change from last tick in ms.
-		var timeDif:uint = timer - msPrev;
+		var tickTime:uint = timer - tickTimer;
 		
 		// check if more then 1 second passed.
-		if (timeDif >= 1000) {
+		if (tickTime >= 1000) {
 			
 			//
-			msPrev = timer;
+			tickTimer = timer;
 			
 			// calculate ammount of missed seconds. (this can happen then player hangs more then 2 seccond on a job.)
-			var missedSeconds:uint = (timeDif - 1000) / 1000;
+			var missedTicks:uint = (tickTime - 1000) / 1000;
 			
 			// get current memory.
 			mem = Number((System.totalMemory * 0.000000954).toFixed(3));
@@ -271,25 +289,25 @@ public class Stats extends Sprite {
 			memMaxGraph = Math.min(graph.height, Math.sqrt(Math.sqrt(memMax * 5000))) - 2;
 			
 			// move graph by 1 pixels for every second passed.
-			graph.scroll(-1 - missedSeconds, 0);
+			graph.scroll(-1 - missedTicks, 0);
 			
 			// clear rectangle area for new graph data.
-			if (missedSeconds) {
-				graph.fillRect(new Rectangle(graph.width - 1 - missedSeconds, 0, 1 + missedSeconds, HEIGHT - 50), colors.bg);
+			if (missedTicks) {
+				graph.fillRect(new Rectangle(graph.width - 1 - missedTicks, 0, 1 + missedTicks, DEFAULT_HEIGHT - 50), colors.bg);
 			} else {
 				graph.fillRect(clearRect, colors.bg);
 			}
 			
 			// draw missed seconds. (if player failed to respond for more then 1 second that means it was hanging, and FPS was < 1 for that time.)
-			while (missedSeconds) {
-				graph.setPixel(graph.width - 1 - missedSeconds, graph.height - 1, colors.fps);
-				missedSeconds--;
+			while (missedTicks) {
+				graph.setPixel(graph.width - 1 - missedTicks, graph.height - 1, colors.fps);
+				missedTicks--;
 			}
 			
 			// draw current graph data. 
 			graph.setPixel(graph.width - 1, graph.height - ((timer - lastTimer) >> 1), colors.ms);
 			graph.setPixel(graph.width - 1, graph.height - memGraph, colors.mem);
-			graph.setPixel(graph.width - 1, graph.height - memMaxGraph, colors.memmax);
+			graph.setPixel(graph.width - 1, graph.height - memMaxGraph, colors.memMax);
 			graph.setPixel(graph.width - 1, graph.height - fpsGraph, colors.fps);
 			
 			// update data for new frame stats.
@@ -306,18 +324,22 @@ public class Stats extends Sprite {
 			this.stage.invalidate();
 			
 			// drawCodeTime
-			monitorView_BD.fillRect(new Rectangle(0, 0, codeTime, 10), 0x00FF00);
+			codeRect.width = codeTime;
+			monitorView_BD.fillRect(codeRect, colors.ms);
 			// draw frameTime
-			monitorView_BD.fillRect(new Rectangle(codeTime, 0, frameTime - codeTime, 10), 0xFFFF00);
+			renderRect.x = codeTime + 1;
+			renderRect.width = frameTime - codeTime;
+			monitorView_BD.fillRect(renderRect, colors.fps);
 			// clean rest of the line
-			monitorView_BD.fillRect(new Rectangle(frameTime, 0, MONITOR_WIDTH, 10), 0x000000);
+			clearMonitorRect.x = frameTime + 1;
+			monitorView_BD.fillRect(clearMonitorRect, colors.bg);
 			// frame time delimeter
-			monitorView_BD.fillRect(new Rectangle(frameRateTime, 0, 1, 10), 0xFF0000);
+			monitorView_BD.fillRect(frameRateRect, colors.fpsSeparator);
 			//
-			// copy one line down
-			monitorView_BD.copyPixels(monitorView_BD, new Rectangle(0, 9, MONITOR_WIDTH, 40), new Point(0, 10));
+			// move monitoring history one line down
+			monitorView_BD.copyPixels(monitorView_BD, monitoringHistoryRect, monitoringHistoryNewPoint);
 			// separator for main graph and log.
-			monitorView_BD.fillRect(new Rectangle(0, 9, MONITOR_WIDTH, 1), 0xD8D8D8);
+			monitorView_BD.fillRect(monitorSeparatorRect, colors.monitorSeparator);
 			
 		}
 		
@@ -344,6 +366,7 @@ public class Stats extends Sprite {
 						stage.frameRate = Math.round(stage.frameRate + 1);
 						statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 						text.htmlText = statData;
+						
 					}
 				}
 				if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_GAP) {
@@ -354,6 +377,10 @@ public class Stats extends Sprite {
 					}
 				}
 			}
+		}
+		if (isMonitoring) {
+			frameRateTime = Math.round(1000 / this.stage.frameRate);
+			frameRateRect.x = frameRateTime;
 		}
 	}
 	
@@ -397,8 +424,8 @@ public class Stats extends Sprite {
 	// handle dragging
 	private function mouseMoveHandler(event:MouseEvent):void {
 		// calculete new possitions.
-		this.x = this.stage.mouseX - this.width * .5;
-		this.y = this.stage.mouseY - this.height * .5;
+		this.x = this.stage.mouseX - DEFAULT_WIDTH * 0.5;
+		this.y = this.stage.mouseY - DEFAULT_HEIGHT * 0.5;
 		
 		// handle x bounds
 		if (this.x > this.stage.stageWidth - this.width) {
@@ -435,9 +462,12 @@ public class Stats extends Sprite {
 // helper class to store graph corols.
 class StatColors {
 	public var bg:uint = 0x000033;
-	public var fps:uint = 0xffff00;
-	public var ms:uint = 0x00ff00;
-	public var mem:uint = 0x00ffff;
-	public var memmax:uint = 0xff0070;
+	public var fps:uint = 0xFFFF00;
+	public var ms:uint = 0x00FF00;
+	public var mem:uint = 0x00FFFF;
+	public var memMax:uint = 0xFF0070;
+	
+	public var fpsSeparator:uint = 0xFF0000;
+	public var monitorSeparator:int = 0xD8D8D8;
 
 }
