@@ -137,14 +137,14 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =     <xmlData>
+		statData =      <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
 				<memMax>MAX:</memMax>
 			</xmlData>;
 		
-		statDataMinimized =     <xmlData>
+		statDataMinimized =      <xmlData>
 				<fps>FPS:</fps>
 			</xmlData>;			
 		
@@ -180,17 +180,6 @@ public class Stats extends Sprite {
 		
 		statsText.styleSheet = style;
 	
-	}
-	
-	// changes all colors.
-	private function refreshColors():void {
-		var cornerCollor:uint = graph_BD.getPixel(0, 0);
-		if (cornerCollor != colors.bg && cornerCollor != colors.mem && cornerCollor != colors.memMax && cornerCollor != colors.ms) {
-			graph_BD.floodFill(0, 0, colors.bg);
-		}
-		initStyleSheet();
-		init(null);
-		initDrawArea();
 	}
 	
 	private function init(event:Event):void {
@@ -694,70 +683,6 @@ public class Stats extends Sprite {
 	override public function set height(value:Number):void {
 		throw Error("It's not possible to change Stats object height. Sorry.");
 	}
-	
-	public function get bgColor():Number {
-		return colors.bg;
-	}
-	
-	public function set bgColor(value:Number):void {
-		colors.bg = value;
-		refreshColors();
-	}
-	
-	public function get fpsColor():Number {
-		return colors.fps;
-	}
-	
-	public function set fpsColor(value:Number):void {
-		colors.fps = value;
-		refreshColors();
-	}
-	
-	public function get msColor():Number {
-		return colors.ms;
-	}
-	
-	public function set msColor(value:Number):void {
-		colors.ms = value;
-		refreshColors();
-	}
-	
-	public function get memColor():Number {
-		return colors.mem;
-	}
-	
-	public function set memColor(value:Number):void {
-		colors.mem = value;
-		refreshColors();
-	}
-	
-	public function get memMaxColor():Number {
-		return colors.memMax;
-	}
-	
-	public function set memMaxColor(value:Number):void {
-		colors.memMax = colors.memMax;
-		refreshColors();
-	}
-	
-	public function get executionTimeColor():Number {
-		return colors.executionTime;
-	}
-	
-	public function set executionTimeColor(value:Number):void {
-		colors.executionTime = value;
-		refreshColors();
-	}
-	
-	public function get monitorSeparatorColor():Number {
-		return colors.monitorSeparator;
-	}
-	
-	public function set monitorSeparatorColor(value:Number):void {
-		colors.monitorSeparator = value;
-		refreshColors();
-	}
-	
 
 }
 
