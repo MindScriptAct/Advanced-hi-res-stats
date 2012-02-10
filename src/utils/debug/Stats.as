@@ -1,6 +1,9 @@
 package utils.debug {
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.CapsStyle;
+import flash.display.JointStyle;
+import flash.display.LineScaleMode;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.events.MouseEvent;
@@ -37,6 +40,7 @@ public class Stats extends Sprite {
 	private const FPS_BUTTON_YPOS:int = 2;
 	private const FPS_BUTTON_SIZE:Number = 6;
 	private const FPS_BUTTON_GAP:int = 9;
+	private const FPS_BUTTON_2_GAP:int = 21;
 	// scroll size
 	private const SCROLL_SIZE:Number = 10;
 	
@@ -122,7 +126,7 @@ public class Stats extends Sprite {
 		memMax = 0;
 		
 		// stat data stored in XML formated text.
-		statData =      <xmlData>
+		statData =                      <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
@@ -161,25 +165,30 @@ public class Stats extends Sprite {
 		// add text
 		addChild(text);
 		
-		//
+		// init objects for later reuse.
 		clearRect = new Rectangle(DEFAULT_WIDTH + bonusWidth - 1, 0, 1, DEFAULT_HEIGHT - 50);
+		codeRect = new Rectangle(0, 0, -1, 10);
+		renderRect = new Rectangle(-1, 0, -1, 10);
+		clearMonitorRect = new Rectangle(-1, 0, MONITOR_WIDTH, 10);
+		frameRateRect = new Rectangle(frameRateTime, 0, 1, 10);
+		monitoringHistoryRect = new Rectangle(0, 9, MONITOR_WIDTH, DEFAULT_HEIGHT);
+		monitoringHistoryNewPoint = new Point(0, 10);
+		monitorSeparatorRect = new Rectangle(0, 8, MONITOR_WIDTH, 1)
 		
-		//
+		// add events.
 		addEventListener(MouseEvent.CLICK, handleClick);
 		addEventListener(Event.ENTER_FRAME, handleFrameTick);
 		addEventListener(MouseEvent.MOUSE_WHEEL, handleMouseWheel);
 		
-		// add dragging feature listeners if needed.
+		// init draging feature.
 		if (isDraggable) {
 			stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
 			stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
 			addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
 		}
 		
-		if (isMonitoring) {
-			this.stage.addEventListener(Event.RENDER, handleFrameRender);
-			frameRateTime = Math.round(1000 / this.stage.frameRate);
-		}
+		// init monitoring.
+		handleMonitoring();
 	
 	}
 	
@@ -190,15 +199,37 @@ public class Stats extends Sprite {
 		graphics.endFill();
 		
 		// draw fps UP/DOWN buttons
-		graphics.lineStyle(1, colors.fps, 1);
+		graphics.lineStyle(1, colors.fps, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+		// plus sign button
 		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
-		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
 		graphics.moveTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS);
 		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE / 2, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE);
 		graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
 		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2);
+		// minus sign button
+		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
 		graphics.moveTo(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
 		graphics.lineTo(FPS_BUTTON_XPOS + FPS_BUTTON_SIZE, FPS_BUTTON_YPOS + FPS_BUTTON_SIZE / 2 + FPS_BUTTON_GAP);
+		// monitoring on/off button.
+		graphics.lineStyle(1, colors.monitorSeparator, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+		graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+		graphics.lineStyle(1, colors.ms, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+		graphics.moveTo(FPS_BUTTON_XPOS + 1, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
+		graphics.lineTo(FPS_BUTTON_XPOS + 1, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + FPS_BUTTON_SIZE - 1);
+		graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
+		graphics.lineTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + FPS_BUTTON_SIZE - 1);
+		graphics.lineStyle(1, colors.fps, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+		graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
+		graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 1);
+		graphics.moveTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
+		graphics.lineTo(FPS_BUTTON_XPOS + 4, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
+		graphics.moveTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 2);
+		graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 3);
+		graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 4);
+		graphics.lineTo(FPS_BUTTON_XPOS + 4, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 4);
+		graphics.moveTo(FPS_BUTTON_XPOS + 2, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 5);
+		graphics.lineTo(FPS_BUTTON_XPOS + 3, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP + 5);
+		//
 		graphics.lineStyle();
 		
 		// draw graph
@@ -215,23 +246,7 @@ public class Stats extends Sprite {
 			keepGraph = false;
 		}
 		
-		if (isMonitoring) {
-			
-			codeRect = new Rectangle(0, 0, -1, 10);
-			renderRect = new Rectangle(-1, 0, -1, 10);
-			clearMonitorRect = new Rectangle(-1, 0, MONITOR_WIDTH, 10);
-			frameRateRect = new Rectangle(frameRateTime, 0, 1, 10);
-			monitoringHistoryRect = new Rectangle(0, 9, MONITOR_WIDTH, DEFAULT_HEIGHT);
-			monitoringHistoryNewPoint = new Point(0, 10);
-			monitorSeparatorRect = new Rectangle(0, 8, MONITOR_WIDTH, 1)
-			
-			if (!monitorView) {
-				monitorView_BD = new BitmapData(MONITOR_WIDTH, DEFAULT_HEIGHT, false, colors.bg);
-				monitorView = new Bitmap(monitorView_BD);
-				this.addChild(monitorView);
-			}
-			monitorView.x = DEFAULT_WIDTH + bonusWidth + 10;
-		}
+		handleMonitoring();
 	}
 	
 	private function destroy(event:Event):void {
@@ -376,11 +391,66 @@ public class Stats extends Sprite {
 						text.htmlText = statData;
 					}
 				}
+				
+				if (this.mouseY > FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP) {
+					if (this.mouseY < FPS_BUTTON_YPOS + FPS_BUTTON_SIZE + FPS_BUTTON_2_GAP) {
+						isMonitoring = !isMonitoring;
+						handleMonitoring();
+					}
+				}
 			}
+			
 		}
 		if (isMonitoring) {
 			frameRateTime = Math.round(1000 / this.stage.frameRate);
 			frameRateRect.x = frameRateTime;
+		}
+	}
+	
+	private function handleMonitoring():void {
+		
+		// draw button outline.
+		if (isMonitoring) {
+			frameRateTime = Math.round(1000 / this.stage.frameRate);
+			graphics.lineStyle(1, 0xFFFFFF, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+			graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+			graphics.drawRect(FPS_BUTTON_XPOS - 1, FPS_BUTTON_YPOS - 1 + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE + 2, FPS_BUTTON_SIZE + 2);
+		} else {
+			graphics.lineStyle(1, colors.monitorSeparator, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+			graphics.drawRect(FPS_BUTTON_XPOS, FPS_BUTTON_YPOS + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE, FPS_BUTTON_SIZE);
+			graphics.lineStyle(1, 0x0, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+			graphics.drawRect(FPS_BUTTON_XPOS - 1, FPS_BUTTON_YPOS - 1 + FPS_BUTTON_2_GAP, FPS_BUTTON_SIZE + 2, FPS_BUTTON_SIZE + 2);
+		}
+		graphics.lineStyle();
+		
+		// handle  monitorView
+		if (isMonitoring) {
+			if (!monitorView) {
+				monitorView_BD = new BitmapData(MONITOR_WIDTH, DEFAULT_HEIGHT, false, colors.bg);
+				monitorView = new Bitmap(monitorView_BD);
+				this.addChild(monitorView);
+			}
+			monitorView.visible = true;
+			monitorView.x = DEFAULT_WIDTH + bonusWidth + 10;
+		} else {
+			//
+			if (monitorView_BD) {
+				monitorView_BD.fillRect(monitorView_BD.rect, colors.bg);
+			}
+			if (monitorView) {
+				monitorView.visible = false;
+			}
+		}
+		
+		// handle ivents
+		if (isMonitoring) {
+			if (!this.stage.hasEventListener(Event.RENDER)) {
+				this.stage.addEventListener(Event.RENDER, handleFrameRender);
+			}
+		} else {
+			if (this.stage.hasEventListener(Event.RENDER)) {
+				this.stage.removeEventListener(Event.RENDER, handleFrameRender);
+			}
 		}
 	}
 	
@@ -430,14 +500,16 @@ public class Stats extends Sprite {
 		// handle x bounds
 		if (this.x > this.stage.stageWidth - this.width) {
 			this.x = this.stage.stageWidth - this.width;
-		} else if (this.x < 0) {
+		}
+		if (this.x < 0) {
 			this.x = 0;
 		}
 		
 		// handle y bounds.
 		if (this.y > this.stage.stageHeight - this.height) {
 			this.y = this.stage.stageHeight - this.height;
-		} else if (this.y < 0) {
+		}
+		if (this.y < 0) {
 			this.y = 0;
 		}
 	}
