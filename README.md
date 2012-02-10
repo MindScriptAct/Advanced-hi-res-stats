@@ -64,7 +64,7 @@ OR :
 	this.addChild(stats);
 	stats.width = 150;
 	stats.x = 10;
-	stats.y = 200;
+	stats.y = 20;
 	//stats.isMinimized = true;
 	//stats.isDraggable = false;
 	stats.isMonitoring = true;

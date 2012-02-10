@@ -28,9 +28,40 @@ import flash.utils.getTimer;
  * http://www.opensource.org/licenses/mit-license.php
  *
  * How to use:
+ * 
+ * Simplest:
+ * this.addChild(new Stats());
  *
- *	addChild( new Stats() );
+ * Make it bigger, smallest possible value is 70.(width):
+ * addChild(new Stats(150));
+ * 
+ * Change initial position (x, y): 
+ * addChild(new Stats(150, 10, 20));
  *
+ * Make it minimized(isMinimized):
+ * addChild(new Stats(150, 10, 20, true));
+ * 
+ * addChild(new Stats(150, 10, 20, false, false));     
+ * Make it not draggable(isDraggable):
+ * 
+ * Enable monitoring feature(isMonitoring):
+ * addChild(new Stats(150, 10, 20, false, true, true));
+ * 
+ * Scale it easealy(scale):
+ * addChild(new Stats(150, 10, 20, false, true, true, 2)); 
+ * 
+ * OR :
+ * 
+ * var stats:Stats = new Stats();
+ * this.addChild(stats);
+ * stats.width = 150;
+ * stats.x = 10;
+ * stats.y = 200;
+ * //stats.isMinimized = true;
+ * //stats.isDraggable = false;
+ * stats.isMonitoring = true;
+ * //stats.scale = 2;
+ * 
  **/
 
 public class Stats extends Sprite {
@@ -685,10 +716,16 @@ public class Stats extends Sprite {
 	//     get/set
 	//----------------------------------
 	
+	/**
+	 * flag for stats beeing dragable or not.
+	 */
 	public function get isDraggable():Boolean {
 		return _isDraggable;
 	}
 	
+	/**
+	 * flag for stats beeing dragable or not.
+	 */
 	public function set isDraggable(value:Boolean):void {
 		_isDraggable = value;
 		if (_isDraggable) {
@@ -712,10 +749,16 @@ public class Stats extends Sprite {
 		}
 	}
 	
+	/**
+	 * flag to show application execution and render monitoring.
+	 */
 	public function get isMonitoring():Boolean {
 		return _isMonitoring;
 	}
 	
+	/**
+	 * flag to show application execution and render monitoring.
+	 */
 	public function set isMonitoring(value:Boolean):void {
 		_isMonitoring = value;
 		initMonitoring();
@@ -727,10 +770,16 @@ public class Stats extends Sprite {
 		}
 	}
 	
+	/**
+	 * flag for counter to be in minimized state. (stats are still tracked, but not shown.)
+	 */
 	public function get isMinimized():Boolean {
 		return _isMinimized;
 	}
 	
+	/**
+	 * flag for counter to be in minimized state. (stats are still tracked, but not shown.)
+	 */
 	public function set isMinimized(value:Boolean):void {
 		_isMinimized = value;
 		initDrawArea();
@@ -742,6 +791,9 @@ public class Stats extends Sprite {
 		}
 	}
 	
+	/**
+	 * Change width. If it is less then 70 - it will be set to default value - 70.
+	 */
 	override public function set width(value:Number):void {
 		// calculate increased width.
 		bonusWidth = value - DEFAULT_WIDTH;
@@ -761,6 +813,9 @@ public class Stats extends Sprite {
 		throw Error("It's not possible to change Stats object height. Sorry.");
 	}
 	
+	/**
+	 * Shortcut to chang scaleX and ScaleY at same time.
+	 */
 	public function get scale():Number {
 		return _scale;
 	}
@@ -774,14 +829,6 @@ public class Stats extends Sprite {
 		} else {
 			zoomMenuItem.caption = ZOOM_CAPTION_x2;
 		}
-	}
-	
-	override public function set scaleX(value:Number):void {
-		throw Error("It's not possible to change Stats object scaleX. Use scale instead.");
-	}
-	
-	override public function set scaleY(value:Number):void {
-		throw Error("It's not possible to change Stats object scaleY. Use scale instead.");
 	}
 
 }
