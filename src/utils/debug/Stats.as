@@ -5,6 +5,7 @@ import flash.display.CapsStyle;
 import flash.display.JointStyle;
 import flash.display.LineScaleMode;
 import flash.display.Sprite;
+import flash.events.ContextMenuEvent;
 import flash.events.Event;
 import flash.events.MouseEvent;
 import flash.geom.Matrix;
@@ -14,6 +15,8 @@ import flash.system.System;
 import flash.text.StyleSheet;
 import flash.text.TextField;
 import flash.text.TextFieldAutoSize;
+import flash.ui.ContextMenu;
+import flash.ui.ContextMenuItem;
 import flash.utils.getTimer;
 
 /**
@@ -48,8 +51,19 @@ public class Stats extends Sprite {
 	private const SCROLL_SIZE:Number = 10;
 	private const MINIMIZE_BUTTON_SIZE:Number = 5;
 	
+	// context menu captions
+	private const ZOOM_CAPTION_x2:String = "Zoom to *2";
+	private const ZOOM_CAPTION_x1:String = "Zoom to *1";
+	private const MINIMIZE_CAPTION_ON:String = "Maximize.";
+	private const MINIMIZE_CAPTION_OFF:String = "Minimize.";
+	private const DRAG_CAPTION_ON:String = "Disable dragging.";
+	private const DRAG_CAPTION_OFF:String = "Enable dragging.";
+	private const MONITOR_CAPTION_ON:String = "Disable monitoring.";
+	private const MONITOR_CAPTION_OFF:String = "Enable monitoring.";
+	private const KILL_CAPTION:String = " !!! Kill Stats object. ಠ_ಠ";
+	
 	// bonus width addet to default WIDTH.
-	private var bonusWidth:int = 0;
+	private var _bonusWidth:int = 0;
 	
 	// stats data in XML format.
 	private var statData:XML;
@@ -75,7 +89,6 @@ public class Stats extends Sprite {
 	private var frameTime:uint;
 	
 	//  graph draw object
-	
 	private var graph_BD:BitmapData;
 	private var clearRect:Rectangle;
 	
@@ -90,6 +103,12 @@ public class Stats extends Sprite {
 	private var monitoringHistoryNewPoint:Point;
 	private var monitorSeparatorRect:Rectangle;
 	
+	// context menu items.
+	private var zoomMenuItem:ContextMenuItem;
+	private var minimizeMenuItem:ContextMenuItem;
+	private var dragMenuItem:ContextMenuItem;
+	private var monitorMenuItem:ContextMenuItem;
+	
 	// current graph draw value.
 	private var fpsGraph:int = 0;
 	private var memGraph:int = 0;
@@ -102,10 +121,13 @@ public class Stats extends Sprite {
 	private var _isMinimized:Boolean;
 	
 	// flag for stats beeing dragable or not.
-	public var isDraggable:Boolean = false;
+	private var _isDraggable:Boolean = false;
 	
 	// flag to show application execution and render monitoring.
 	private var _isMonitoring:Boolean = false;
+	
+	// scaling parameter for simple scaling.
+	private var _scale:Number = 1;
 	
 	/**
 	 * Stats - FPS, MS and MEM, all in one.
@@ -115,40 +137,35 @@ public class Stats extends Sprite {
 	 * @param	isMinimized		initial minimize status. (not minimized by default)
 	 * @param	isDraggable		makes stats dragable or not. (dragable by default)
 	 * @param	isMonitoring	flag to start monitoring frame execution time. (will not monitor by default.)
+	 * @param	scale			simplified scaling of stat object.
 	 */
-	public function Stats(width:int = 70, x:int = 0, y:int = 0, isMinimized:Boolean = false, isDraggable:Boolean = true, isMonitoring:Boolean = false):void {
+	public function Stats(width:int = 70, x:int = 0, y:int = 0, isMinimized:Boolean = false, isDraggable:Boolean = true, isMonitoring:Boolean = false, scale:Number = 1):void {
+		//
+		this._isDraggable = isDraggable;
+		this._isMonitoring = isMonitoring;
 		this._isMinimized = isMinimized;
+		this._scale = scale;
+		
+		initContextMenu();
 		
 		// calculate increased width.
 		bonusWidth = width - DEFAULT_WIDTH;
-		if (bonusWidth < 0) {
-			bonusWidth = 0;
-		}
 		
 		// initial positioning
 		this.x = x;
 		this.y = y;
 		
-		//
-		this.isDraggable = isDraggable;
-		this._isMonitoring = isMonitoring;
-		
-		//
-		memMax = 0;
-		
 		// stat data stored in XML formated text.
-		statData =      <xmlData>
+		statData =     <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
 				<memMax>MAX:</memMax>
 			</xmlData>;
 		
-		statDataMinimized =      <xmlData>
+		statDataMinimized =     <xmlData>
 				<fps>FPS:</fps>
 			</xmlData>;			
-		
-		
 		
 		// text fild to show all stats.
 		// TODO : test if it's not more simple just to have 4 text fields without xml and css...
@@ -159,39 +176,95 @@ public class Stats extends Sprite {
 		statsText.selectable = false;
 		statsText.mouseEnabled = false;
 		
-		initStyleSheet();
+		// style for stats.
+		style = new StyleSheet();
+		style.setStyle('xmlData', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
+		style.setStyle('fps', {color: "#" + (colors.fps).toString(16)});
+		style.setStyle('ms', {color: "#" + (colors.ms).toString(16)});
+		style.setStyle('mem', {color: "#" + (colors.mem).toString(16)});
+		style.setStyle('memMax', {color: "#" + (colors.memMax).toString(16)});
+		statsText.styleSheet = style;
 		
 		//
-		graph_BD = new BitmapData(DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
+		graph_BD = new BitmapData(DEFAULT_WIDTH + _bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
 		
 		//
 		addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 		addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
 	}
 	
-	private function initStyleSheet():void {
-		// style for stats.
-		style = new StyleSheet();
-		style.setStyle('xmlData', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
-		style.setStyle('fps', {color: hex2css(colors.fps)});
-		style.setStyle('ms', {color: hex2css(colors.ms)});
-		style.setStyle('mem', {color: hex2css(colors.mem)});
-		style.setStyle('memMax', {color: hex2css(colors.memMax)});
+	// init righth button click menu.
+	private function initContextMenu():void {
+		var menu:ContextMenu = new ContextMenu();
+		zoomMenuItem = new ContextMenuItem(ZOOM_CAPTION_x2);
+		zoomMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, handleTogleZoom, false, 0, true);
+		if (_scale != 1) {
+			zoomMenuItem.caption = ZOOM_CAPTION_x1;
+		}
+		minimizeMenuItem = new ContextMenuItem(MINIMIZE_CAPTION_OFF, true);
+		minimizeMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, toggleMinimize, false, 0, true);
+		if (_isMinimized) {
+			minimizeMenuItem.caption = MINIMIZE_CAPTION_ON;
+		}
+		dragMenuItem = new ContextMenuItem(DRAG_CAPTION_ON);
+		dragMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, toggleDrag, false, 0, true);
+		if (!_isDraggable) {
+			dragMenuItem.caption = DRAG_CAPTION_ON;
+		}
+		monitorMenuItem = new ContextMenuItem(MONITOR_CAPTION_OFF);
+		monitorMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, toggleMonitor, false, 0, true);
+		if (_isMonitoring) {
+			monitorMenuItem.caption = MONITOR_CAPTION_ON;
+		}
+		var killMenuItem:ContextMenuItem = new ContextMenuItem(KILL_CAPTION, true);
+		killMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, destroy, false, 0, true);
+		menu.customItems.push( //
+			zoomMenuItem, //
+			minimizeMenuItem, //
+			dragMenuItem, //
+			monitorMenuItem, //
+			killMenuItem //
+			);
 		
-		statsText.styleSheet = style;
-	
+		this.contextMenu = menu;
 	}
 	
+	//----------------------------------
+	//     Context menu click handlers
+	//----------------------------------
+	
+	private function handleTogleZoom(event:ContextMenuEvent):void {
+		if (_scale == 1) {
+			scale = 2;
+		} else {
+			scale = 1;
+		}
+	}
+	
+	private function toggleMinimize(event:ContextMenuEvent):void {
+		isMinimized = !_isMinimized;
+	}
+	
+	private function toggleDrag(event:ContextMenuEvent):void {
+		isDraggable = !_isDraggable;
+	}
+	
+	private function toggleMonitor(event:ContextMenuEvent):void {
+		isMonitoring = !_isMonitoring;
+	}
+	
+	//----------------------------------
+	//     init
+	//----------------------------------
+	
+	// stats are initialized then put tu stage.
 	private function init(event:Event):void {
-		
 		// add text
 		addChild(statsText);
-		
 		// set initial time in ms for 1 frame.
 		frameRateTime = Math.round(1000 / this.stage.frameRate);
 		
 		// init objects for later reuse.
-		clearRect = new Rectangle(DEFAULT_WIDTH + bonusWidth - 1, 0, 1, DEFAULT_HEIGHT - 50);
 		codeRect = new Rectangle(0, 0, -1, 10);
 		renderRect = new Rectangle(-1, 0, -1, 10);
 		clearMonitorRect = new Rectangle(-1, 0, MONITOR_WIDTH, 10);
@@ -205,18 +278,18 @@ public class Stats extends Sprite {
 		addEventListener(Event.ENTER_FRAME, handleFrameTick);
 		addEventListener(MouseEvent.MOUSE_WHEEL, handleMouseWheel);
 		
-		// init draging feature.
-		if (isDraggable) {
-			stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
-			stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
-			addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
-		}
+		// init draging feature by using setter. 
+		isDraggable = _isDraggable;
+		
+		// activate scaling setter.
+		scale = _scale;
 		
 		// draw bg and graph
 		initDrawArea();
 	
 	}
 	
+	// funciton to init or reInit all visuol object.
 	private function initDrawArea():void {
 		initBackground();
 		initGraph();
@@ -224,14 +297,14 @@ public class Stats extends Sprite {
 		initMinimizeButton();
 	}
 	
+	// draw bg with buttons
 	private function initBackground():void {
 		graphics.clear();
-		// draw bg.
 		graphics.beginFill(colors.bg);
 		if (_isMinimized) {
 			graphics.drawRect(0, 0, MINIMIZED_WIDTH, MINIMIZED_HEIGHT);
 		} else {
-			graphics.drawRect(0, 0, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT);
+			graphics.drawRect(0, 0, DEFAULT_WIDTH + _bonusWidth, DEFAULT_HEIGHT);
 		}
 		graphics.endFill();
 		
@@ -272,16 +345,16 @@ public class Stats extends Sprite {
 		graphics.lineStyle();
 	}
 	
+	// draw graph
 	private function initGraph():void {
-		// draw graph
 		if (!_isMinimized) {
 			if (graph_BD) {
 				var oldGraph_BD:BitmapData = graph_BD;
 			}
-			graph_BD = new BitmapData(DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
+			graph_BD = new BitmapData(DEFAULT_WIDTH + _bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
 			
 			graphics.beginBitmapFill(graph_BD, new Matrix(1, 0, 0, 1, 0, 50));
-			graphics.drawRect(0, 50, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50);
+			graphics.drawRect(0, 50, DEFAULT_WIDTH + _bonusWidth, DEFAULT_HEIGHT - 50);
 			// if oldGraph is set - drow its content into new graph.
 			if (oldGraph_BD) {
 				graph_BD.copyPixels(oldGraph_BD, oldGraph_BD.rect, new Point(graph_BD.width - oldGraph_BD.width, 0));
@@ -290,6 +363,7 @@ public class Stats extends Sprite {
 		}
 	}
 	
+	// init monitoring feature
 	private function initMonitoring():void {
 		// draw button outline.
 		if (!_isMinimized) {
@@ -315,7 +389,7 @@ public class Stats extends Sprite {
 			if (!this.contains(monitorView)) {
 				this.addChild(monitorView);
 			}
-			monitorView.x = DEFAULT_WIDTH + bonusWidth + 5;
+			monitorView.x = DEFAULT_WIDTH + _bonusWidth + 5;
 		} else {
 			if (monitorView_BD) {
 				monitorView_BD.fillRect(monitorView_BD.rect, colors.bg);
@@ -336,7 +410,7 @@ public class Stats extends Sprite {
 			}
 		}
 		
-		// handle ivents
+		// handle events
 		if (_isMonitoring) {
 			if (!this.stage.hasEventListener(Event.RENDER)) {
 				this.stage.addEventListener(Event.RENDER, handleFrameRender);
@@ -348,30 +422,28 @@ public class Stats extends Sprite {
 		}
 	}
 	
+	// draw minimize button.
 	private function initMinimizeButton():void {
-		// draw button.
+		graphics.beginFill(0xFF0000)
+		graphics.moveTo(-1, 4);
 		if (_isMinimized) {
-			graphics.beginFill(0xFF0000)
-			graphics.moveTo(-1, 4);
 			graphics.lineTo(4, 4);
-			graphics.lineTo(4, -1);
-			graphics.lineTo(-1, 4);
-			graphics.endFill();
-			// resize text field down. (so it will not increase boundary area for mous clicks..)
-			statsText.height = MINIMIZED_HEIGHT;
 		} else {
-			graphics.beginFill(0xFF0000)
-			graphics.moveTo(-1, 4);
 			graphics.lineTo(-1, -1);
-			graphics.lineTo(4, -1);
-			graphics.lineTo(-1, 4);
-			graphics.endFill();
 		}
-		graphics.lineStyle();
+		graphics.lineTo(4, -1);
+		graphics.lineTo(-1, 4);
+		graphics.endFill();
+		
+		if (_isMinimized) {
+			// resize text field down. (so it will not increase boundary area for mouse clicks..)
+			statsText.text = "...";
+			statsText.height = statsText.textWidth;
+		}
 	}
 	
 	//----------------------------------
-	//     
+	//      
 	//----------------------------------
 	
 	private function destroy(event:Event):void {
@@ -390,7 +462,7 @@ public class Stats extends Sprite {
 		removeEventListener(MouseEvent.CLICK, handleClick);
 		removeEventListener(Event.ENTER_FRAME, handleFrameTick);
 		
-		if (isDraggable) {
+		if (_isDraggable) {
 			stage.removeEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
 			stage.removeEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
 			removeEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
@@ -408,7 +480,6 @@ public class Stats extends Sprite {
 		
 		// check if more then 1 second passed.
 		if (tickTime >= 1000) {
-			
 			//
 			tickTimer = timer;
 			
@@ -484,7 +555,6 @@ public class Stats extends Sprite {
 			monitorView_BD.copyPixels(monitorView_BD, monitoringHistoryRect, monitoringHistoryNewPoint);
 			// separator for main graph and log.
 			monitorView_BD.fillRect(monitorSeparatorRect, colors.monitorSeparator);
-			
 		}
 		
 		// time in ms for one frame tick.
@@ -496,10 +566,8 @@ public class Stats extends Sprite {
 		} else {
 			statsText.htmlText = statData;
 		}
-		
 		// increse frame tick count by 1.
 		fps++;
-		
 		//
 		lastTimer = timer;
 	}
@@ -516,7 +584,6 @@ public class Stats extends Sprite {
 							stage.frameRate = Math.round(stage.frameRate + 1);
 							statData.fps = "FPS: " + fps + " / " + stage.frameRate;
 							statsText.htmlText = statData;
-							
 						}
 					}
 					// remove fps button
@@ -533,7 +600,6 @@ public class Stats extends Sprite {
 							isMonitoring = !_isMonitoring;
 						}
 					}
-					
 					// recalculate fpsRate. (needed if it is changed.)
 					if (_isMonitoring) {
 						frameRateTime = Math.round(1000 / this.stage.frameRate);
@@ -542,12 +608,10 @@ public class Stats extends Sprite {
 				}
 			}
 		}
-		
 		// minimize button
 		if (this.mouseX < MINIMIZE_BUTTON_SIZE) {
 			if (this.mouseY < MINIMIZE_BUTTON_SIZE) {
 				isMinimized = !_isMinimized;
-				
 			}
 		}
 	}
@@ -555,15 +619,10 @@ public class Stats extends Sprite {
 	// handle mouseWheel
 	private function handleMouseWheel(event:MouseEvent):void {
 		if (event.delta > 0) {
-			bonusWidth += SCROLL_SIZE;
+			bonusWidth = _bonusWidth + SCROLL_SIZE;
 		} else {
-			bonusWidth -= SCROLL_SIZE;
-			if (bonusWidth < 0) {
-				bonusWidth = 0;
-			}
+			bonusWidth = _bonusWidth - SCROLL_SIZE;
 		}
-		// clear bg
-		graphics.clear();
 		// redraw bg
 		initDrawArea();
 	}
@@ -601,54 +660,57 @@ public class Stats extends Sprite {
 	}
 	
 	private function fitToStage():void {
-		if (_isMinimized) {
-			
-			// handle x bounds
-			if (this.x > this.stage.stageWidth - MINIMIZED_WIDTH) {
-				this.x = this.stage.stageWidth - MINIMIZED_WIDTH;
-			}
-			// handle y bounds.
-			if (this.y > this.stage.stageHeight - MINIMIZED_HEIGHT) {
-				this.y = this.stage.stageHeight - MINIMIZED_HEIGHT;
-			}
-		} else {
-			
-			// handle x bounds
-			if (this.x > this.stage.stageWidth - this.width) {
-				this.x = this.stage.stageWidth - this.width;
-			}
-			// handle y bounds.
-			if (this.y > this.stage.stageHeight - this.height) {
-				this.y = this.stage.stageHeight - this.height;
-			}
-		}
 		// handle x bounds
+		if (this.x > this.stage.stageWidth - this.width) {
+			this.x = this.stage.stageWidth - this.width;
+		}
 		if (this.x < 0) {
 			this.x = 0;
 		}
 		// handle y bounds.
+		if (this.y > this.stage.stageHeight - this.height) {
+			this.y = this.stage.stageHeight - this.height;
+		}
 		if (this.y < 0) {
 			this.y = 0;
 		}
 	}
 	
-	// handle mous leaving the screen.
+	// handle mouse leaving the screen.
 	private function mouseLeaveHandler(event:Event):void {
 		this.stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 	}
 	
 	//----------------------------------
-	//     Utils
-	//----------------------------------
-	
-	// converts color number to hex value.
-	private function hex2css(color:int):String {
-		return "#" + color.toString(16);
-	}
-	
-	//----------------------------------
 	//     get/set
 	//----------------------------------
+	
+	public function get isDraggable():Boolean {
+		return _isDraggable;
+	}
+	
+	public function set isDraggable(value:Boolean):void {
+		_isDraggable = value;
+		if (_isDraggable) {
+			dragMenuItem.caption = DRAG_CAPTION_ON;
+			if (stage) {
+				if (!stage.hasEventListener(MouseEvent.MOUSE_UP)) {
+					stage.addEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
+					stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+					addEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+				}
+			}
+		} else {
+			dragMenuItem.caption = DRAG_CAPTION_OFF;
+			if (stage) {
+				if (stage.hasEventListener(MouseEvent.MOUSE_UP)) {
+					stage.removeEventListener(MouseEvent.MOUSE_UP, handleMouseUp);
+					stage.removeEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+					removeEventListener(MouseEvent.MOUSE_DOWN, handleMouseDown);
+				}
+			}
+		}
+	}
 	
 	public function get isMonitoring():Boolean {
 		return _isMonitoring;
@@ -658,6 +720,11 @@ public class Stats extends Sprite {
 		_isMonitoring = value;
 		initMonitoring();
 		fitToStage();
+		if (_isMonitoring) {
+			monitorMenuItem.caption = MONITOR_CAPTION_ON;
+		} else {
+			monitorMenuItem.caption = MONITOR_CAPTION_OFF;
+		}
 	}
 	
 	public function get isMinimized():Boolean {
@@ -668,27 +735,59 @@ public class Stats extends Sprite {
 		_isMinimized = value;
 		initDrawArea();
 		fitToStage();
+		if (_isMinimized) {
+			minimizeMenuItem.caption = MINIMIZE_CAPTION_ON;
+		} else {
+			minimizeMenuItem.caption = MINIMIZE_CAPTION_OFF;
+		}
 	}
 	
 	override public function set width(value:Number):void {
 		// calculate increased width.
 		bonusWidth = value - DEFAULT_WIDTH;
-		if (bonusWidth < 0) {
-			bonusWidth = 0;
-		}
 		initDrawArea();
 		fitToStage();
+	}
+	
+	private function set bonusWidth(value:int):void {
+		_bonusWidth = value;
+		if (_bonusWidth < 0) {
+			_bonusWidth = 0;
+		}
+		clearRect = new Rectangle(DEFAULT_WIDTH + _bonusWidth - 1, 0, 1, DEFAULT_HEIGHT - 50);
 	}
 	
 	override public function set height(value:Number):void {
 		throw Error("It's not possible to change Stats object height. Sorry.");
 	}
+	
+	public function get scale():Number {
+		return _scale;
+	}
+	
+	public function set scale(value:Number):void {
+		_scale = value;
+		super.scaleX = _scale;
+		super.scaleY = _scale;
+		if (_scale != 1) {
+			zoomMenuItem.caption = ZOOM_CAPTION_x1;
+		} else {
+			zoomMenuItem.caption = ZOOM_CAPTION_x2;
+		}
+	}
+	
+	override public function set scaleX(value:Number):void {
+		throw Error("It's not possible to change Stats object scaleX. Use scale instead.");
+	}
+	
+	override public function set scaleY(value:Number):void {
+		throw Error("It's not possible to change Stats object scaleY. Use scale instead.");
+	}
 
 }
-
 }
 
-// helper class to store graph corols.
+// helper class to store graph colors.
 class StatColors {
 	public var bg:uint = 0x000033;
 	public var fps:uint = 0xFFFF00;
