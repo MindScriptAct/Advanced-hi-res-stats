@@ -99,13 +99,13 @@ public class Stats extends Sprite {
 	private var colors:StatColors = new StatColors();
 	
 	// flag for counter to be in minimized state. (stats are still tracked, but not shown.)
-	private var isMinimized:Boolean;
+	private var _isMinimized:Boolean;
 	
 	// flag for stats beeing dragable or not.
-	private var isDraggable:Boolean = false;
+	public var isDraggable:Boolean = false;
 	
 	// flag to show application execution and render monitoring.
-	private var isMonitoring:Boolean = false;
+	private var _isMonitoring:Boolean = false;
 	
 	/**
 	 * Stats - FPS, MS and MEM, all in one.
@@ -117,7 +117,7 @@ public class Stats extends Sprite {
 	 * @param	isMonitoring	flag to start monitoring frame execution time. (will not monitor by default.)
 	 */
 	public function Stats(width:int = 70, x:int = 0, y:int = 0, isMinimized:Boolean = false, isDraggable:Boolean = true, isMonitoring:Boolean = false):void {
-		this.isMinimized = isMinimized;
+		this._isMinimized = isMinimized;
 		
 		// calculate increased width.
 		bonusWidth = width - DEFAULT_WIDTH;
@@ -131,7 +131,7 @@ public class Stats extends Sprite {
 		
 		//
 		this.isDraggable = isDraggable;
-		this.isMonitoring = isMonitoring;
+		this._isMonitoring = isMonitoring;
 		
 		//
 		memMax = 0;
@@ -148,13 +148,7 @@ public class Stats extends Sprite {
 				<fps>FPS:</fps>
 			</xmlData>;			
 		
-		// style for stats.
-		style = new StyleSheet();
-		style.setStyle('xmlData', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
-		style.setStyle('fps', {color: hex2css(colors.fps)});
-		style.setStyle('ms', {color: hex2css(colors.ms)});
-		style.setStyle('mem', {color: hex2css(colors.mem)});
-		style.setStyle('memMax', {color: hex2css(colors.memMax)});
+		
 		
 		// text fild to show all stats.
 		// TODO : test if it's not more simple just to have 4 text fields without xml and css...
@@ -164,13 +158,39 @@ public class Stats extends Sprite {
 		statsText.condenseWhite = true;
 		statsText.selectable = false;
 		statsText.mouseEnabled = false;
+		
+		initStyleSheet();
+		
 		//
 		graph_BD = new BitmapData(DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT - 50, false, colors.bg);
 		
 		//
 		addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 		addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
+	}
 	
+	private function initStyleSheet():void {
+		// style for stats.
+		style = new StyleSheet();
+		style.setStyle('xmlData', {fontSize: '9px', fontFamily: '_sans', leading: '-2px'});
+		style.setStyle('fps', {color: hex2css(colors.fps)});
+		style.setStyle('ms', {color: hex2css(colors.ms)});
+		style.setStyle('mem', {color: hex2css(colors.mem)});
+		style.setStyle('memMax', {color: hex2css(colors.memMax)});
+		
+		statsText.styleSheet = style;
+	
+	}
+	
+	// changes all colors.
+	private function refreshColors():void {
+		var cornerCollor:uint = graph_BD.getPixel(0, 0);
+		if (cornerCollor != colors.bg && cornerCollor != colors.mem && cornerCollor != colors.memMax && cornerCollor != colors.ms) {
+			graph_BD.floodFill(0, 0, colors.bg);
+		}
+		initStyleSheet();
+		init(null);
+		initDrawArea();
 	}
 	
 	private function init(event:Event):void {
@@ -219,14 +239,14 @@ public class Stats extends Sprite {
 		graphics.clear();
 		// draw bg.
 		graphics.beginFill(colors.bg);
-		if (isMinimized) {
+		if (_isMinimized) {
 			graphics.drawRect(0, 0, MINIMIZED_WIDTH, MINIMIZED_HEIGHT);
 		} else {
 			graphics.drawRect(0, 0, DEFAULT_WIDTH + bonusWidth, DEFAULT_HEIGHT);
 		}
 		graphics.endFill();
 		
-		if (!isMinimized) {
+		if (!_isMinimized) {
 			// draw fps UP/DOWN buttons
 			graphics.lineStyle(1, colors.fps, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
 			// plus sign button
@@ -265,7 +285,7 @@ public class Stats extends Sprite {
 	
 	private function initGraph():void {
 		// draw graph
-		if (!isMinimized) {
+		if (!_isMinimized) {
 			if (graph_BD) {
 				var oldGraph_BD:BitmapData = graph_BD;
 			}
@@ -283,22 +303,22 @@ public class Stats extends Sprite {
 	
 	private function initMonitoring():void {
 		// draw button outline.
-		if (!isMinimized) {
-			if (isMonitoring) {
+		if (!_isMinimized) {
+			if (_isMonitoring) {
 				graphics.lineStyle(1, 0xFFFFFF, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
 				graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_MONITOR_GAP, BUTTON_SIZE, BUTTON_SIZE);
 				graphics.drawRect(BUTTON_XPOS - 1, BUTTON_YPOS - 1 + BUTTON_MONITOR_GAP, BUTTON_SIZE + 2, BUTTON_SIZE + 2);
 			} else {
 				graphics.lineStyle(1, colors.monitorSeparator, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
 				graphics.drawRect(BUTTON_XPOS, BUTTON_YPOS + BUTTON_MONITOR_GAP, BUTTON_SIZE, BUTTON_SIZE);
-				graphics.lineStyle(1, 0x0, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
+				graphics.lineStyle(1, colors.bg, 1, true, LineScaleMode.NORMAL, CapsStyle.SQUARE, JointStyle.MITER);
 				graphics.drawRect(BUTTON_XPOS - 1, BUTTON_YPOS - 1 + BUTTON_MONITOR_GAP, BUTTON_SIZE + 2, BUTTON_SIZE + 2);
 			}
 		}
 		graphics.lineStyle();
 		
 		// handle  monitorView
-		if (isMonitoring) {
+		if (_isMonitoring) {
 			if (!monitorView) {
 				monitorView_BD = new BitmapData(MONITOR_WIDTH, DEFAULT_HEIGHT, false, colors.bg);
 				monitorView = new Bitmap(monitorView_BD);
@@ -319,7 +339,7 @@ public class Stats extends Sprite {
 		}
 		
 		// hide monitoring if minimized.
-		if (isMinimized) {
+		if (_isMinimized) {
 			if (monitorView) {
 				if (this.contains(monitorView)) {
 					this.removeChild(monitorView);
@@ -328,7 +348,7 @@ public class Stats extends Sprite {
 		}
 		
 		// handle ivents
-		if (isMonitoring) {
+		if (_isMonitoring) {
 			if (!this.stage.hasEventListener(Event.RENDER)) {
 				this.stage.addEventListener(Event.RENDER, handleFrameRender);
 			}
@@ -341,7 +361,7 @@ public class Stats extends Sprite {
 	
 	private function initMinimizeButton():void {
 		// draw button.
-		if (isMinimized) {
+		if (_isMinimized) {
 			graphics.beginFill(0xFF0000)
 			graphics.moveTo(-1, 4);
 			graphics.lineTo(4, 4);
@@ -442,7 +462,7 @@ public class Stats extends Sprite {
 			graph_BD.setPixel(graph_BD.width - 1, graph_BD.height - fpsGraph, colors.fps);
 			
 			// update data for new frame stats.
-			if (isMinimized) {
+			if (_isMinimized) {
 				statDataMinimized.fps = "FPS: " + fps + " / " + stage.frameRate;
 			} else {
 				statData.fps = "FPS: " + fps + " / " + stage.frameRate;
@@ -455,7 +475,7 @@ public class Stats extends Sprite {
 		}
 		
 		// handle monitoring
-		if (isMonitoring) {
+		if (_isMonitoring) {
 			this.stage.invalidate();
 			
 			// drawCodeTime
@@ -482,7 +502,7 @@ public class Stats extends Sprite {
 		statData.ms = "MS: " + frameTime;
 		
 		// update data text.
-		if (isMinimized) {
+		if (_isMinimized) {
 			statsText.htmlText = statDataMinimized;
 		} else {
 			statsText.htmlText = statData;
@@ -498,7 +518,7 @@ public class Stats extends Sprite {
 	// handle click over stat object.
 	private function handleClick(event:MouseEvent):void {
 		// check if click is in button area.
-		if (!isMinimized) {
+		if (!_isMinimized) {
 			if (this.mouseX > BUTTON_XPOS) {
 				if (this.mouseX < BUTTON_XPOS + BUTTON_SIZE) {
 					// add fps button
@@ -521,14 +541,12 @@ public class Stats extends Sprite {
 					// toggle monitoring button
 					if (this.mouseY > BUTTON_YPOS + BUTTON_MONITOR_GAP) {
 						if (this.mouseY < BUTTON_YPOS + BUTTON_SIZE + BUTTON_MONITOR_GAP) {
-							isMonitoring = !isMonitoring;
-							initMonitoring();
-							fitToStage();
+							isMonitoring = !_isMonitoring;
 						}
 					}
 					
 					// recalculate fpsRate. (needed if it is changed.)
-					if (isMonitoring) {
+					if (_isMonitoring) {
 						frameRateTime = Math.round(1000 / this.stage.frameRate);
 						frameRateRect.x = frameRateTime;
 					}
@@ -539,9 +557,8 @@ public class Stats extends Sprite {
 		// minimize button
 		if (this.mouseX < MINIMIZE_BUTTON_SIZE) {
 			if (this.mouseY < MINIMIZE_BUTTON_SIZE) {
-				isMinimized = !isMinimized;
-				initDrawArea();
-				fitToStage();
+				isMinimized = !_isMinimized;
+				
 			}
 		}
 	}
@@ -584,7 +601,7 @@ public class Stats extends Sprite {
 	// handle dragging
 	private function mouseMoveHandler(event:MouseEvent):void {
 		// calculete new possitions.
-		if (isMinimized) {
+		if (_isMinimized) {
 			this.x = this.stage.mouseX - MINIMIZED_WIDTH * 0.5;
 			this.y = this.stage.mouseY - MINIMIZED_HEIGHT * 0.5;
 		} else {
@@ -595,7 +612,7 @@ public class Stats extends Sprite {
 	}
 	
 	private function fitToStage():void {
-		if (isMinimized) {
+		if (_isMinimized) {
 			
 			// handle x bounds
 			if (this.x > this.stage.stageWidth - MINIMIZED_WIDTH) {
@@ -639,8 +656,111 @@ public class Stats extends Sprite {
 	private function hex2css(color:int):String {
 		return "#" + color.toString(16);
 	}
+	
+	//----------------------------------
+	//     get/set
+	//----------------------------------
+	
+	public function get isMonitoring():Boolean {
+		return _isMonitoring;
+	}
+	
+	public function set isMonitoring(value:Boolean):void {
+		_isMonitoring = value;
+		initMonitoring();
+		fitToStage();
+	}
+	
+	public function get isMinimized():Boolean {
+		return _isMinimized;
+	}
+	
+	public function set isMinimized(value:Boolean):void {
+		_isMinimized = value;
+		initDrawArea();
+		fitToStage();
+	}
+	
+	override public function set width(value:Number):void {
+		// calculate increased width.
+		bonusWidth = value - DEFAULT_WIDTH;
+		if (bonusWidth < 0) {
+			bonusWidth = 0;
+		}
+		initDrawArea();
+		fitToStage();
+	}
+	
+	override public function set height(value:Number):void {
+		throw Error("It's not possible to change Stats object height. Sorry.");
+	}
+	
+	public function get bgColor():Number {
+		return colors.bg;
+	}
+	
+	public function set bgColor(value:Number):void {
+		colors.bg = value;
+		refreshColors();
+	}
+	
+	public function get fpsColor():Number {
+		return colors.fps;
+	}
+	
+	public function set fpsColor(value:Number):void {
+		colors.fps = value;
+		refreshColors();
+	}
+	
+	public function get msColor():Number {
+		return colors.ms;
+	}
+	
+	public function set msColor(value:Number):void {
+		colors.ms = value;
+		refreshColors();
+	}
+	
+	public function get memColor():Number {
+		return colors.mem;
+	}
+	
+	public function set memColor(value:Number):void {
+		colors.mem = value;
+		refreshColors();
+	}
+	
+	public function get memMaxColor():Number {
+		return colors.memMax;
+	}
+	
+	public function set memMaxColor(value:Number):void {
+		colors.memMax = colors.memMax;
+		refreshColors();
+	}
+	
+	public function get executionTimeColor():Number {
+		return colors.executionTime;
+	}
+	
+	public function set executionTimeColor(value:Number):void {
+		colors.executionTime = value;
+		refreshColors();
+	}
+	
+	public function get monitorSeparatorColor():Number {
+		return colors.monitorSeparator;
+	}
+	
+	public function set monitorSeparatorColor(value:Number):void {
+		colors.monitorSeparator = value;
+		refreshColors();
+	}
+	
 
 }
+
 }
 
 // helper class to store graph corols.
