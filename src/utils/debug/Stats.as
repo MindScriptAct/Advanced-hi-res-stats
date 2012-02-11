@@ -187,14 +187,14 @@ public class Stats extends Sprite {
 		this.y = y;
 		
 		// stat data stored in XML formated text.
-		statData =     <xmlData>
+		statData = <xmlData>
 				<fps>FPS:</fps>
 				<ms>MS:</ms>
 				<mem>MEM:</mem>
 				<memMax>MAX:</memMax>
 			</xmlData>;
 		
-		statDataMinimized =     <xmlData>
+		statDataMinimized = <xmlData>
 				<fps>FPS:</fps>
 			</xmlData>;			
 		
@@ -222,6 +222,8 @@ public class Stats extends Sprite {
 		//
 		addEventListener(Event.ADDED_TO_STAGE, init, false, 0, true);
 		addEventListener(Event.REMOVED_FROM_STAGE, destroy, false, 0, true);
+		//
+		this.mouseChildren = false;
 	}
 	
 	// init righth button click menu.
