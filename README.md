@@ -16,16 +16,25 @@ Features
  - Context menu
 
 
-Screenshot
+Screen-shots
 ----------
 
 ### Advanced Stats ###
-![AdvancedStats.jpg](https://github.com/MindScriptAct/Advanced-hi-res-stats/raw/master/assets/AdvancedStats.jpg "Advanced Stats")
-### Minimized Advanced Stats ###
-![MinimizedStats.jpg](https://github.com/MindScriptAct/Advanced-hi-res-stats/raw/master/assets/MinimizedStats.jpg "Minimized Advanced Stats")
+![AdvancedStats.png](https://github.com/MindScriptAct/Advanced-hi-res-stats/raw/master/assets/AdvancedStats.png "Advanced Stats")
 ### Advanced Stats Context menu ###
 ![StatsContextMenu.jpg](https://github.com/MindScriptAct/Advanced-hi-res-stats/raw/master/assets/StatsContextMenu.jpg "Advanced Stats Context menu")
 
+	
+Monitoring feature
+------------------
+
+Monitoring feture is added to better understand how your application performes.
+
+ * Yellow vertical line shows how much total time your frame has for code execution and rendering. If you go over this line your frame rate will drop.
+ * Red graph will show how much time your running code takes.
+ * Green graph will show how much time your application takes to render stage view, **AND** idle time if any.
+ * If you have performance problems - check this graph. It will show how much and then your application is stessed out on executing code or rendering your view.
+	
 Usage
 -----
 
@@ -54,7 +63,7 @@ Enable monitoring feature(isMonitoring):
 
 	addChild(new Stats(150, 10, 20, false, true, true));
 	
-Scale it easealy(scale):
+Scale it easily(scale):
 
 	addChild(new Stats(150, 10, 20, false, true, true, 2));	
 	
@@ -74,8 +83,9 @@ OR :
 Controls
 --------
 
-* **BUTTONS plus/minus**  - changes frame per seccond speed application is runing.
-* **BUTTON togle monitoring**. - taggle execution and rendering monitoring feature.
+* **BUTTONS plus/minus**  - changes frame per second speed application is running.
+* **BUTTON toggle monitoring**. - toggle monitoring feature(tracks execution and rendering time in ms)
+* **BUTTON toggle mode** - switch between minimized and maximized modes.
 * **Mouse wheel**. - increase/decrease width of Stats graph.
 * **Drag** - drags if dragging is enabled.
 * **RIGHT CLICK** opens context menu.
@@ -86,4 +96,3 @@ History
 ------
  * Fork of https://github.com/mrdoob/Hi-ReS-Stats
  * Merged with : https://github.com/rafaelrinaldi/Hi-ReS-Stats AND https://github.com/shamruk/Hi-ReS-Stats
-
