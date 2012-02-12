@@ -41,8 +41,8 @@ import flash.utils.getTimer;
  * Make it minimized(isMinimized):
  * addChild(new Stats(150, 10, 20, true));
  * 
- * addChild(new Stats(150, 10, 20, false, false));     
  * Make it not draggable(isDraggable):
+ * addChild(new Stats(150, 10, 20, false, false));
  * 
  * Enable monitoring feature(isMonitoring):
  * addChild(new Stats(150, 10, 20, false, true, true));
