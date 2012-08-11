@@ -251,13 +251,15 @@ public class Stats extends Sprite {
 		}
 		var killMenuItem:ContextMenuItem = new ContextMenuItem(KILL_CAPTION, true);
 		killMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, destroy, false, 0, true);
-		menu.customItems.push( //
-			zoomMenuItem, //
-			minimizeMenuItem, //
-			dragMenuItem, //
-			monitorMenuItem, //
-			killMenuItem //
-			);
+		if(menu.customItems != null){
+			menu.customItems.push( //
+				zoomMenuItem, //
+				minimizeMenuItem, //
+				dragMenuItem, //
+				monitorMenuItem, //
+				killMenuItem //
+				);
+		}
 		
 		this.contextMenu = menu;
 	}
